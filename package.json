@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "@vercel/analytics": "^2.0.1",
     "framer-motion": "^12.33.0",
     "lightningcss": "^1.31.1",
     "lucide-react": "^0.563.0",

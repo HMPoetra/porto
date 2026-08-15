@@ -1,107 +1,114 @@
 'use client';
+
 import { motion } from 'framer-motion';
-import { useEffect, useState, useMemo } from 'react';
 
-const BackgroundParticles = () => {
-  const [mounted, setMounted] = useState(false);
+/**
+ * Dekorasi latar Neo Brutalism: bentuk geometris flat berbingkai hitam tebal.
+ * Posisi sengaja ditulis statis (bukan acak) supaya render server dan client
+ * identik dan komposisinya tetap seimbang di setiap kunjungan.
+ */
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+type Shape = {
+  id: string;
+  kind: 'square' | 'circle' | 'triangle' | 'cross' | 'stripes';
+  top: string;
+  left: string;
+  size: number;
+  color: string;
+  rotate: number;
+  duration: number;
+};
 
-  // Menggunakan useMemo agar partikel tidak di-render ulang terus menerus (lebih ringan)
-  const elements = useMemo(() => {
-    // 1. Partikel Melayang (Benda Langit/Nebula)
-    const stars = Array.from({ length: 15 }).map((_, i) => ({
-      id: `star-${i}`,
-      type: 'star',
-      size: Math.random() * 3 + 1,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      duration: Math.random() * 15 + 10,
-      color: i % 2 === 0 ? '#DC143C' : '#6a0dad',
-    }));
+const SHAPES: Shape[] = [
+  { id: 's1', kind: 'square',   top: '8%',  left: '4%',  size: 64,  color: '#FFD600', rotate: 12,  duration: 9 },
+  { id: 's2', kind: 'circle',   top: '18%', left: '88%', size: 80,  color: '#FF5CA8', rotate: 0,   duration: 11 },
+  { id: 's3', kind: 'triangle', top: '34%', left: '92%', size: 56,  color: '#00E0C6', rotate: -8,  duration: 8 },
+  { id: 's4', kind: 'cross',    top: '46%', left: '6%',  size: 48,  color: '#A3FF3C', rotate: 0,   duration: 10 },
+  { id: 's5', kind: 'stripes',  top: '62%', left: '90%', size: 72,  color: '#4D7CFF', rotate: 6,   duration: 12 },
+  { id: 's6', kind: 'square',   top: '74%', left: '3%',  size: 56,  color: '#FF8A3C', rotate: -14, duration: 9 },
+  { id: 's7', kind: 'circle',   top: '88%', left: '85%', size: 60,  color: '#B98CFF', rotate: 0,   duration: 13 },
+  { id: 's8', kind: 'triangle', top: '92%', left: '12%', size: 50,  color: '#FFD600', rotate: 20,  duration: 10 },
+];
 
-    // 2. Digital Rain (Hujan Kode/Matrix Style Ringan)
-    const codeDrops = Array.from({ length: 12 }).map((_, i) => ({
-      id: `code-${i}`,
-      type: 'code',
-      x: Math.random() * 100,
-      delay: Math.random() * 10,
-      duration: Math.random() * 5 + 5,
-      char: ['0', '1', '<', '>', '/', '{', '}'][Math.floor(Math.random() * 7)],
-    }));
+const ShapeGlyph = ({ shape }: { shape: Shape }) => {
+  const { kind, size, color } = shape;
 
-    return { stars, codeDrops };
-  }, []);
+  if (kind === 'circle') {
+    return (
+      <div
+        className="rounded-full border-4 border-black"
+        style={{ width: size, height: size, background: color }}
+      />
+    );
+  }
 
-  if (!mounted) return null;
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Layer 1: Nebula Stars */}
-      {elements.stars.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            width: p.size,
-            height: p.size,
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            background: p.color,
-            boxShadow: `0 0 20px ${p.color}`,
-          }}
-          animate={{
-            y: [0, -40, 0],
-            opacity: [0.1, 0.4, 0.1],
-            scale: [1, 1.5, 1],
-          }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+  if (kind === 'triangle') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <polygon
+          points="50,6 96,94 4,94"
+          fill={color}
+          stroke="#000"
+          strokeWidth={10}
+          strokeLinejoin="round"
         />
-      ))}
+      </svg>
+    );
+  }
 
-      {/* Layer 2: Falling Code (Hujan Digital Ringan) */}
-      {elements.codeDrops.map((drop) => (
-        <motion.div
-          key={drop.id}
-          className="absolute font-mono text-[10px] font-bold text-crimson/20"
-          style={{ left: `${drop.x}%`, top: '-5%' }}
-          animate={{
-            y: ['0vh', '110vh'],
-            opacity: [0, 0.8, 0],
-          }}
-          transition={{
-            duration: drop.duration,
-            repeat: Infinity,
-            delay: drop.delay,
-            ease: "linear",
-          }}
-        >
-          {drop.char}
-        </motion.div>
-      ))}
+  if (kind === 'cross') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path
+          d="M35 5 H65 V35 H95 V65 H65 V95 H35 V65 H5 V35 H35 Z"
+          fill={color}
+          stroke="#000"
+          strokeWidth={8}
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
 
-      {/* Layer 3: Shooting Star (Animasi sporadis) */}
-      <motion.div
-        className="absolute h-[1px] w-[60px] bg-gradient-to-r from-transparent via-white to-transparent opacity-0"
-        initial={{ rotate: -35, x: '-10%', y: '20%' }}
-        animate={{
-          x: ['0vw', '110vw'],
-          y: ['20vh', '80vh'],
-          opacity: [0, 1, 0],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          repeatDelay: 8,
-          ease: "easeIn",
+  if (kind === 'stripes') {
+    return (
+      <div
+        className="border-4 border-black"
+        style={{
+          width: size,
+          height: size,
+          background: `repeating-linear-gradient(45deg, ${color} 0 8px, #000 8px 12px)`,
         }}
       />
+    );
+  }
+
+  return (
+    <div
+      className="border-4 border-black"
+      style={{ width: size, height: size, background: color }}
+    />
+  );
+};
+
+const BackgroundParticles = () => {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+      {SHAPES.map((shape) => (
+        <motion.div
+          key={shape.id}
+          className="absolute"
+          style={{ top: shape.top, left: shape.left, rotate: shape.rotate }}
+          animate={{ y: [0, -18, 0] }}
+          transition={{
+            duration: shape.duration,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        >
+          <ShapeGlyph shape={shape} />
+        </motion.div>
+      ))}
     </div>
   );
 };

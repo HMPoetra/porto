@@ -1,0 +1,19 @@
+{
+  "name": "HMPoetra Portfolio",
+  "short_name": "HMPoetra",
+  "description": "Personal portfolio of Hapsoro Mahendra Poetra — Web Developer & D3 Informatics Student",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffbeb",
+  "theme_color": "#ffd600",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["portfolio", "technology"],
+  "lang": "id"
+}

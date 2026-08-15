@@ -1,22 +1,28 @@
 'use client';
 
+import { useState, useEffect, memo } from 'react';
+import Image from 'next/image';
 import { motion, Variants } from 'framer-motion';
 import { FaGithub, FaExternalLinkAlt } from 'react-icons/fa';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useLanguage } from '@/context/LanguageContext';
 
-interface Project {
+export interface Project {
+  id?: string;
   title: string;
   description: string;
   tags: string[];
   image: string;
   github?: string;
   demo?: string;
+  sort_order?: number;
 }
 
-const Projects = () => {
-  const projects: Project[] = [
+const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
+  en: [
     {
       title: 'Portofolio',
-      description: 'Website Portofolia, berisikan informasi tentang data pribadi, skills, dan project.',
+      description: 'Personal portfolio website featuring personal information, skills, and projects in a Neo Brutalist design.',
       tags: ['Next.js', 'TypeScript', 'tailwind'],
       image: '/projects/porto.png',
       github: 'https://github.com/HMPoetra/my-porto',
@@ -24,152 +30,253 @@ const Projects = () => {
     },
     {
       title: 'Chartify',
-      description: 'Website dashboard untuk visualisasi data penjualan dengan grafik interaktif.',
+      description: 'Sales data visualization dashboard with interactive charts and real-time analytics.',
       tags: ['Next.js', 'Tailwind', 'MongoDB'],
       image: '/projects/chartify.png',
       github: 'https://github.com/HMPoetra/hartify',
     },
     {
       title: 'UI Toko Sepatu',
-      description: 'Aplikasi manajemen tugas dengan fitur drag & drop dan deadline reminder.',
+      description: 'Shoe store UI with product listing, cart functionality, and responsive layout.',
       tags: ['HTML', 'CSS'],
       image: '/projects/toko_sepatu.png',
       github: 'https://github.com/HMPoetra/Toko_Sepatu',
     },
     {
-      title: 'Project Mendatang',
-      description: 'Website Pengangkutan sampah tingkat rt/rw dengan fitur pelacakan waktu nyata dan chat interaktif antara driver dan warga.',
+      title: 'Upcoming Project',
+      description: 'Community waste pickup platform with real-time tracking and interactive chat between drivers and residents.',
       tags: ['Next.js', 'TypeScript', 'supabase', 'tailwind'],
       image: '',
       github: '',
     },
-  ];
+  ],
+  id: [
+    {
+      title: 'Portofolio',
+      description: 'Website portofolio pribadi berisikan data diri, keahlian, dan showcase proyek dengan gaya Neo Brutalism.',
+      tags: ['Next.js', 'TypeScript', 'tailwind'],
+      image: '/projects/porto.png',
+      github: 'https://github.com/HMPoetra/my-porto',
+      demo: 'https://my-porto-gamma-self.vercel.app/',
+    },
+    {
+      title: 'Chartify',
+      description: 'Dashboard visualisasi data penjualan dengan grafik interaktif dan analitik performa.',
+      tags: ['Next.js', 'Tailwind', 'MongoDB'],
+      image: '/projects/chartify.png',
+      github: 'https://github.com/HMPoetra/hartify',
+    },
+    {
+      title: 'UI Toko Sepatu',
+      description: 'Antarmuka e-commerce toko sepatu dengan katalog produk, keranjang belanja, dan desain responsif.',
+      tags: ['HTML', 'CSS'],
+      image: '/projects/toko_sepatu.png',
+      github: 'https://github.com/HMPoetra/Toko_Sepatu',
+    },
+    {
+      title: 'Proyek Mendatang',
+      description: 'Aplikasi pengangkutan sampah tingkat RT/RW dengan fitur live-tracking dan chat warga-driver.',
+      tags: ['Next.js', 'TypeScript', 'supabase', 'tailwind'],
+      image: '',
+      github: '',
+    },
+  ],
+};
+
+const CARD_COLORS = ['bg-brut-yellow', 'bg-brut-cyan', 'bg-brut-pink', 'bg-brut-lime'];
+
+const cardVariants: Variants = {
+  hidden: { y: 30, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { duration: 0.5, ease: 'easeOut' },
+  },
+};
+
+// Extracted outside parent to prevent recreation on every render
+const ProjectCard = memo(({ project, index, comingSoonText, codeText, demoText }: { project: Project; index: number; comingSoonText: string; codeText: string; demoText: string }) => (
+  <motion.div
+    variants={cardVariants}
+    whileHover={{ y: -8, rotate: index % 2 === 0 ? 1.5 : -1.5 }}
+    whileTap={{ scale: 0.96 }}
+    transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+    className={`flex h-full flex-col border-4 border-black p-5 shadow-brut-lg transition-all duration-150 hover:shadow-brut-xl ${
+      CARD_COLORS[index % CARD_COLORS.length]
+    }`}
+  >
+    {/* Thumbnail Frame */}
+    <div className="relative mb-5 flex aspect-video w-full items-center justify-center overflow-hidden border-4 border-black bg-brut-paper">
+      {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
+        <Image
+          src={project.image}
+          alt={`${project.title} screenshot`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        />
+      ) : (
+        <div
+          className="flex h-full w-full flex-col items-center justify-center text-center"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(45deg, #000 0 6px, transparent 6px 18px)',
+          }}
+        >
+          <span className="border-4 border-black bg-brut-paper px-3 py-2 font-display text-lg leading-none text-black">
+            {comingSoonText}
+          </span>
+        </div>
+      )}
+    </div>
+
+    {/* Content */}
+    <div className="flex w-full flex-grow flex-col text-left">
+      <h3 className="mb-2 font-display text-xl text-black">{project.title}</h3>
+      <p className="mb-5 line-clamp-3 text-xs leading-relaxed font-semibold text-black">
+        {project.description}
+      </p>
+
+      {/* Tags */}
+      <div className="mb-6 flex flex-wrap justify-start gap-1.5">
+        {project.tags.map((tag, i) => (
+          <span
+            key={i}
+            className="border-2 border-black bg-black px-2 py-0.5 font-mono text-[9px] font-bold tracking-wide text-brut-paper uppercase"
+          >
+            #{tag}
+          </span>
+        ))}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-auto flex w-full gap-3">
+        {project.github && (
+          <a
+            href={project.github}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${project.title} source code on GitHub`}
+            className="flex flex-1 items-center justify-center gap-2 border-4 border-black bg-brut-paper px-3 py-2 font-display text-[10px] tracking-widest text-black shadow-brut-xs transition-all duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brut-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
+          >
+            <FaGithub size={14} /> {codeText}
+          </a>
+        )}
+        {project.demo && project.demo !== '#' && (
+          <a
+            href={project.demo}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${project.title} live demo`}
+            className="flex flex-1 items-center justify-center gap-2 border-4 border-black bg-black px-3 py-2 font-display text-[10px] tracking-widest text-brut-paper shadow-brut-xs transition-all duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brut-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
+          >
+            <FaExternalLinkAlt size={12} /> {demoText}
+          </a>
+        )}
+      </div>
+    </div>
+  </motion.div>
+));
+
+ProjectCard.displayName = 'ProjectCard';
+
+const Projects = () => {
+  const { language, t } = useLanguage();
+  const defaultList = DEFAULT_PROJECTS_DATA[language] || DEFAULT_PROJECTS_DATA.en;
+  const [projectsList, setProjectsList] = useState<Project[]>(defaultList);
+
+  useEffect(() => {
+    setProjectsList(DEFAULT_PROJECTS_DATA[language] || DEFAULT_PROJECTS_DATA.en);
+  }, [language]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!isSupabaseConfigured()) return;
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('sort_order', { ascending: true });
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          const mapped: Project[] = data.map((p) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            image: p.image_url || '',
+            github: p.github_url || '',
+            demo: p.demo_url || '',
+            tags: p.tags || [],
+            sort_order: p.sort_order,
+          }));
+          setProjectsList(mapped);
+        }
+      } catch (err) {
+        console.warn('Fallback to local projects data:', err);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  const uniqueProjectsList = Array.from(
+    new Map(
+      (projectsList && projectsList.length > 0 ? projectsList : defaultList)
+        .filter((p) => p && p.title)
+        .map((p) => [p.title.toLowerCase().trim(), p])
+    ).values()
+  );
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.15 },
+      transition: { staggerChildren: 0.12 },
     },
   };
-
-  const cardVariants: Variants = {
-    hidden: { y: 30, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { duration: 0.6, ease: "easeOut" },
-    },
-  };
-
-  const ProjectCard = ({ project }: { project: Project }) => (
-    <motion.div
-      variants={cardVariants}
-      whileHover={{ y: -10 }}
-      className="p-6 flex flex-col h-full transition-shadow duration-300 bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] hover:shadow-2xl hover:shadow-[#dc143c]/10 relative overflow-hidden"
-    >
-      {/* Thumbnail Frame */}
-      <div className="relative w-full aspect-video bg-white/5 rounded-xl mb-6 flex items-center justify-center border border-white/5 overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#dc143c]/10 to-purple-600/10 opacity-50 transition-opacity group-hover:opacity-80"></div>
-
-        {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
-          <img
-            src={project.image}
-            alt={project.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div className="text-center z-10">
-            <p className="text-[#dc143c] font-black italic tracking-widest text-[10px] uppercase opacity-80">Mission Pending</p>
-            <p className="text-white/20 font-black text-2xl uppercase italic leading-none">Coming Soon</p>
-          </div>
-        )}
-      </div>
-
-      {/* Content Area - Rata Kiri */}
-      <div className="flex flex-col flex-grow w-full text-left">
-        <h3 className="text-xl font-bold text-white mb-2 tracking-tight italic uppercase">
-          {project.title}
-        </h3>
-        <p className="text-gray-400 text-xs leading-relaxed mb-6 line-clamp-3">
-          {project.description}
-        </p>
-
-        {/* Tags - Rata Kiri */}
-        <div className="flex flex-wrap justify-start gap-1.5 mb-8">
-          {project.tags.map((tag, i) => (
-            <motion.span
-              key={i}
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
-              className="px-2.5 py-1 bg-black border border-white/10 rounded text-[9px] text-gray-400 font-mono uppercase tracking-wider"
-            >
-              #{tag}
-            </motion.span>
-          ))}
-        </div>
-
-        {/* Action Buttons - Tetap di bawah */}
-        <div className="flex gap-3 mt-auto w-full">
-          {project.github && (
-            <motion.a
-              whileTap={{ scale: 0.95 }}
-              href={project.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all flex-1 text-[10px] font-bold uppercase tracking-widest text-white"
-            >
-              <FaGithub size={14} /> Code
-            </motion.a>
-          )}
-          {project.demo && project.demo !== '#' && (
-            <motion.a
-              whileTap={{ scale: 0.95 }}
-              href={project.demo}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#dc143c] rounded-xl hover:shadow-[0_0_20px_rgba(220,20,60,0.4)] transition-all flex-1 text-[10px] font-bold uppercase tracking-widest text-white"
-            >
-              <FaExternalLinkAlt size={12} /> Demo
-            </motion.a>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
 
   return (
-    <section id="projects" className="py-24 flex items-center justify-center min-h-screen bg-[#000000] text-white">
-      <div className="container max-w-6xl mx-auto px-6">
+    <section id="projects" className="flex min-h-screen items-center justify-center py-24">
+      <div className="container mx-auto max-w-6xl px-4 md:px-6">
         {/* Title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="mb-14 text-center"
         >
-          <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter mb-4 uppercase">
-            Latest <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#dc143c] to-purple-500 underline decoration-[#dc143c]/30">Missions</span>
+          <h2 className="mb-4 font-display text-4xl text-black md:text-6xl">
+            {t.projects.title}{' '}
+            <span className="inline-block -rotate-1 border-4 border-black bg-brut-pink px-3 shadow-brut-sm">
+              {t.projects.highlight}
+            </span>
           </h2>
-          <motion.div
-            initial={{ width: 0 }}
-            whileInView={{ width: 80 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-            className="h-1.5 bg-[#dc143c] mx-auto"
-          ></motion.div>
+          <span className="inline-block border-4 border-black bg-black px-4 py-1.5 font-display text-[11px] tracking-[0.3em] text-brut-lime">
+            {t.projects.subtitle}
+          </span>
         </motion.div>
 
-        {/* Project Grid - justify-center agar card yang jumlahnya sedikit tetap di tengah */}
+        {/* Project Grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
-          className="flex flex-wrap justify-center gap-6"
+          className="flex flex-wrap justify-center gap-8"
         >
-          {projects.map((project, index) => (
-            <div key={index} className="w-full sm:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-1.5rem)] max-w-[400px]">
-              <ProjectCard project={project} />
+          {uniqueProjectsList.map((project, index) => (
+            <div
+              key={project.id || index}
+              className="w-full max-w-[400px] sm:w-[calc(50%-2rem)] lg:w-[calc(33.333%-2rem)]"
+            >
+              <ProjectCard
+                project={project}
+                index={index}
+                comingSoonText={t.projects.comingSoon}
+                codeText={t.projects.codeBtn}
+                demoText={t.projects.demoBtn}
+              />
             </div>
           ))}
         </motion.div>
@@ -179,35 +286,22 @@ const Projects = () => {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 1 }}
-          className="mt-20 text-center flex flex-col items-center gap-6"
+          transition={{ delay: 0.3 }}
+          className="mt-20 flex flex-col items-center gap-6 text-center"
         >
-          <motion.div
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="flex items-center gap-4"
-          >
-            <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#dc143c]"></span>
-            <span className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#dc143c]/80">
-              More Projects Coming Soon
-            </span>
-            <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#dc143c]"></span>
-          </motion.div>
+          <span className="border-4 border-black bg-brut-yellow px-4 py-2 font-display text-[11px] tracking-[0.25em] text-black shadow-brut-sm">
+            {t.projects.moreProjects}
+          </span>
 
-          <motion.a
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <a
             href="https://github.com/HMPoetra?tab=repositories"
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative inline-flex items-center gap-3 px-10 py-4 bg-transparent border border-white/20 rounded-full overflow-hidden transition-all hover:border-[#dc143c]"
+            className="brut-btn bg-brut-cyan text-xs"
           >
-            <div className="absolute inset-0 bg-[#dc143c] translate-y-[101%] group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="relative z-10 text-xs font-black uppercase tracking-[0.2em] group-hover:text-white">
-              Explore All Repositories
-            </span>
-            <FaGithub className="relative z-10 text-xl group-hover:text-white transition-colors" />
-          </motion.a>
+            {t.projects.exploreGithub}
+            <FaGithub className="text-lg" />
+          </a>
         </motion.div>
       </div>
     </section>

@@ -1,111 +1,303 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   NEO BRUTALISM DESIGN SYSTEM
+   Prinsip: warna flat, border hitam tebal, hard shadow tanpa blur,
+   sudut tajam, tipografi besar & tebal, kontras tinggi.
+   ========================================================================== */
+
 @theme {
-  /* Warna Dasar & Gaming */
-  --color-border: var(--border);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-blood-red: #8B0000;
-  --color-crimson: #DC143C;
-  --color-dark-purple: #1a0b2e;
-  --color-deep-black: #050505;
-  --color-neon-purple: #6a0dad;
+  /* --- Palet Dasar --- */
+  --color-brut-bg: #fffbeb;
+  --color-brut-paper: #ffffff;
+  --color-brut-ink: #000000;
+  --color-brut-muted: #57534e;
 
-  /* Font Mono Khusus Code */
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  /* --- Aksen Flat --- */
+  --color-brut-yellow: #ffd600;
+  --color-brut-pink: #ff5ca8;
+  --color-brut-cyan: #00e0c6;
+  --color-brut-lime: #a3ff3c;
+  --color-brut-blue: #4d7cff;
+  --color-brut-orange: #ff8a3c;
+  --color-brut-red: #ff3c3c;
+  --color-brut-violet: #b98cff;
 
-  /* Keyframes Animasi */
-  @keyframes mesh {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
+  /* --- Hard Shadow (tanpa blur, ciri utama neo brutalism) --- */
+  --shadow-brut-xs: 2px 2px 0 0 #000000;
+  --shadow-brut-sm: 4px 4px 0 0 #000000;
+  --shadow-brut: 6px 6px 0 0 #000000;
+  --shadow-brut-lg: 8px 8px 0 0 #000000;
+  --shadow-brut-xl: 12px 12px 0 0 #000000;
 
-  @keyframes gradient-text {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
+  /* --- Tipografi --- */
+  --font-display: var(--font-archivo-black), "Arial Black", sans-serif;
+  --font-sans: var(--font-space-grotesk), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 }
+
+/* ==========================================================================
+   DARK MODE — CSS Variable Override
+   Menggunakan data-theme="dark" attribute (next-themes)
+   ========================================================================== */
 
 :root {
-  /* White Mode Variables */
-  --background: 270 50% 98%;
-  --foreground: 270 50% 10%;
-  --border: 270 30% 90%;
+  --bg-primary: #fffbeb;
+  --bg-paper: #ffffff;
+  --bg-paper-dark: #f5f5f0;
+  --text-primary: #000000;
+  --text-muted: #57534e;
+  --border-color: #000000;
+  --shadow-color: #000000;
+  --dot-color: #000000;
+  --dot-opacity: 0.09;
 }
 
-.dark {
-  /* Dark Mode Variables */
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-paper: #242424;
+  --bg-paper-dark: #2e2e2e;
+  --text-primary: #ffffff;
+  --text-muted: #a8a29e;
+  --border-color: #ffffff;
+  --shadow-color: #ffffff;
+  --dot-color: #ffffff;
+  --dot-opacity: 0.06;
 }
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
 
 @layer base {
+  * {
+    /* Neo brutalism = sudut tajam. Matikan pembulatan bawaan. */
+    border-radius: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply antialiased min-h-screen transition-opacity duration-500 bg-fixed relative;
-    /* Default Gaming Mesh Background */
-    background: linear-gradient(-45deg, #050505, #1a0b2e, #050505, #2e0b0b) !important;
-    background-size: 400% 400% !important;
-    animation: mesh 20s ease infinite !important;
-    color: white;
+    @apply antialiased min-h-screen;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Efek Grid Cyberpunk Modern */
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-image: 
-      linear-gradient(rgba(220, 20, 60, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(106, 13, 173, 0.05) 1px, transparent 1px);
-    background-size: 50px 50px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* Noise Texture Overlay */
+  /* Grid titik brutalist sebagai tekstur latar */
   body::before {
     content: "";
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-    opacity: 0.03;
+    inset: 0;
+    background-image: radial-gradient(var(--dot-color) 1.5px, transparent 1.5px);
+    background-size: 28px 28px;
+    opacity: var(--dot-opacity);
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
+    transition: opacity 0.3s ease;
   }
 
-  /* Memastikan tidak ada scrollbar saat loading muncul (Custom Property dari LoadingScreen) */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  ::selection {
+    background: var(--color-brut-yellow);
+    color: #000;
+  }
+
   body:has([data-loading="true"]) {
     overflow: hidden !important;
   }
 }
 
-/* --- Utilities --- */
+/* ==========================================================================
+   DARK MODE OVERRIDES — Component-level
+   ========================================================================== */
 
-.text-gradient {
-  @apply bg-gradient-to-r from-blood-red via-crimson to-neon-purple bg-clip-text text-transparent bg-[length:200%_auto];
-  animation: gradient-text 5s ease infinite;
+/* Override bg-brut-paper ke dark paper di dark mode */
+[data-theme="dark"] .bg-brut-paper {
+  background-color: var(--bg-paper) !important;
+}
+[data-theme="dark"] .bg-brut-bg {
+  background-color: var(--bg-primary) !important;
+}
+[data-theme="dark"] .text-black {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .border-black {
+  border-color: #ffffff !important;
+}
+[data-theme="dark"] .bg-black {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+[data-theme="dark"] .text-brut-paper {
+  color: #1a1a1a !important;
+}
+[data-theme="dark"] .bg-brut-yellow,
+[data-theme="dark"] .bg-brut-pink,
+[data-theme="dark"] .bg-brut-cyan,
+[data-theme="dark"] .bg-brut-lime,
+[data-theme="dark"] .bg-brut-orange {
+  color: #000000 !important;
+}
+[data-theme="dark"] .shadow-brut-xs {
+  box-shadow: 2px 2px 0 0 #ffffff;
+}
+[data-theme="dark"] .shadow-brut-sm {
+  box-shadow: 4px 4px 0 0 #ffffff;
+}
+[data-theme="dark"] .shadow-brut {
+  box-shadow: 6px 6px 0 0 #ffffff;
+}
+[data-theme="dark"] .shadow-brut-lg {
+  box-shadow: 8px 8px 0 0 #ffffff;
+}
+[data-theme="dark"] .shadow-brut-xl {
+  box-shadow: 12px 12px 0 0 #ffffff;
+}
+[data-theme="dark"] .bg-neutral-400 {
+  background-color: #555 !important;
+}
+[data-theme="dark"] .placeholder\:text-neutral-400::placeholder {
+  color: #666 !important;
+}
+[data-theme="dark"] .text-neutral-600 {
+  color: #aaa !important;
 }
 
-.glass-container {
-  @apply backdrop-blur-3xl border transition-all duration-500 rounded-[2rem];
-  /* White Mode */
-  @apply bg-white/40 border-purple-200 shadow-xl shadow-purple-900/5;
-  /* Dark Mode - FIXED: Tanpa spasi di rgba untuk menghindari build error */
-  @apply dark:bg-black/40 dark:border-white/5 dark:shadow-[0_0_40px_rgba(0,0,0,0.5)];
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+
+/* Blok dasar: kertas putih, border hitam tebal, hard shadow */
+.brut-box {
+  @apply border-4 border-black bg-brut-paper shadow-brut-lg;
 }
 
-/* Custom Scrollbar Gaming */
+.brut-box-sm {
+  @apply border-2 border-black bg-brut-paper shadow-brut-sm;
+}
+
+/* Interaksi: blok "ditekan" ke arah shadow, bukan membesar */
+.brut-press {
+  @apply transition-all duration-150;
+}
+
+.brut-press:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 11px 11px 0 0 var(--shadow-color);
+}
+
+.brut-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--shadow-color);
+}
+
+/* Tombol */
+.brut-btn {
+  @apply inline-flex items-center justify-center gap-2 border-4 border-black
+         px-6 py-3 font-black uppercase tracking-wider text-black
+         shadow-brut transition-all duration-150 cursor-pointer;
+  font-family: var(--font-display);
+}
+
+.brut-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 var(--shadow-color);
+}
+
+.brut-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--shadow-color);
+}
+
+.brut-btn:disabled {
+  @apply cursor-not-allowed opacity-60;
+  transform: none;
+  box-shadow: var(--shadow-brut);
+}
+
+/* Tag / label kecil */
+.brut-tag {
+  @apply inline-block border-2 border-black bg-brut-paper px-2 py-0.5
+         text-[10px] font-bold uppercase tracking-wide text-black;
+}
+
+/* Input form */
+.brut-input {
+  @apply w-full border-4 border-black bg-brut-paper px-4 py-3 text-sm
+         font-semibold text-black outline-none transition-all duration-150
+         placeholder:font-bold placeholder:uppercase placeholder:tracking-wide
+         placeholder:text-neutral-400;
+}
+
+.brut-input:focus {
+  @apply bg-brut-yellow;
+  box-shadow: var(--shadow-brut-sm);
+}
+
+[data-theme="dark"] .brut-input:focus {
+  background-color: var(--color-brut-yellow) !important;
+  color: #000 !important;
+}
+
+/* Judul dengan sorotan blok warna */
+.brut-highlight {
+  @apply inline-block border-4 border-black bg-brut-yellow px-3 py-1
+         shadow-brut-sm;
+}
+
+/* Teks bergaris tepi (outline) untuk headline besar */
+.brut-outline-text {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--text-primary);
+  paint-order: stroke fill;
+}
+
+/* Garis pembatas tebal */
+.brut-rule {
+  @apply h-1 w-full bg-black;
+}
+
+/* Scrollbar brutalist */
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 14px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: var(--bg-primary);
+  border-left: 3px solid var(--border-color);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-crimson/20 rounded-full hover:bg-crimson/50 transition-colors;
+  background: var(--color-brut-pink);
+  border: 3px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brut-cyan);
+}
+
+/* Sembunyikan scrollbar pada elemen tertentu */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Skip to content accessibility */
+.skip-to-content {
+  @apply fixed -top-full left-4 z-[99999] bg-brut-yellow border-4 border-black px-4 py-2 font-display text-xs text-black;
+  transition: top 0.2s;
+}
+
+.skip-to-content:focus {
+  top: 1rem;
 }
