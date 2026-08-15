@@ -25,7 +25,7 @@ const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
       description: 'Personal portfolio website featuring personal information, skills, and projects in a Neo Brutalist design.',
       tags: ['Next.js', 'TypeScript', 'tailwind'],
       image: '/projects/porto.png',
-      github: 'https://github.com/HMPoetra/my-porto',
+      github: 'https://github.com/HMPoetra/porto',
       demo: 'https://my-porto-gamma-self.vercel.app/',
     },
     {
@@ -56,7 +56,7 @@ const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
       description: 'Website portofolio pribadi berisikan data diri, keahlian, dan showcase proyek dengan gaya Neo Brutalism.',
       tags: ['Next.js', 'TypeScript', 'tailwind'],
       image: '/projects/porto.png',
-      github: 'https://github.com/HMPoetra/my-porto',
+      github: 'https://github.com/HMPoetra/porto',
       demo: 'https://my-porto-gamma-self.vercel.app/',
     },
     {

@@ -1,4 +1,4 @@
-# ⚡ Hapsoro Mahendra Poetra — Modern Neo-Brutalist Portfolio
+# ⚡ Modern Neo-Brutalist Portfolio & CMS
 
 <div align="center">
 
@@ -16,9 +16,8 @@
 
   <p align="center">
     <a href="https://my-porto-gamma-self.vercel.app/" target="_blank"><strong>🌐 Live Demo</strong></a> ·
-    <a href="https://github.com/HMPoetra/my-porto" target="_blank"><strong>📂 GitHub Repository</strong></a> ·
-    <a href="#-fitur-utama--key-features"><strong>✨ Fitur</strong></a> ·
-    <a href="#-memulai--getting-started"><strong>🛠️ Setup</strong></a>
+    <a href="https://github.com/HMPoetra/porto" target="_blank"><strong>📂 GitHub Repository</strong></a> ·
+    <a href="#-fitur-utama--key-features"><strong>✨ Fitur</strong></a>
   </p>
 
 </div>
@@ -27,7 +26,7 @@
 
 ## 📖 Tentang Proyek / About The Project
 
-Website portofolio interaktif dan modern milik **Hapsoro Mahendra Poetra** (Mahasiswa D3 Teknik Informatika & Fullstack Web Developer). Dibangun menggunakan **Next.js 16 (App Router)**, **TypeScript**, **Tailwind CSS**, **Framer Motion**, serta backend **Supabase** dengan dashboard CMS mandiri untuk manajemen konten secara real-time.
+Website portofolio interaktif dan modern untuk **Fullstack Web Developer**. Dibangun menggunakan **Next.js 16 (App Router)**, **TypeScript**, **Tailwind CSS**, **Framer Motion**, serta backend **Supabase** dengan dashboard CMS mandiri untuk manajemen konten secara real-time.
 
 Mengusung konsep desain **Neo-Brutalism** dengan kontras tinggi, border tebal, aksen warna cerah (*yellow, cyan, lime, pink, violet*), drop-shadow tegas, micro-interactions, serta dukungan dwibahasa (**Bahasa Indonesia & English**).
 
@@ -51,7 +50,7 @@ Mengusung konsep desain **Neo-Brutalism** dengan kontras tinggi, border tebal, a
 
 ### 💼 & 🎓 4. Separated Journey Timeline (Experience vs Background)
 - **Work & Professional Experience**: Riwayat pekerjaan, freelance, internship, dan organisasi.
-- **Education & Academic Background**: Riwayat studi di Universitas Logistik dan Bisnis Internasional (ULBI) & proyek akademik.
+- **Education & Academic Background**: Riwayat studi akademik, pendidikan formal, & proyek kampus.
 - Tab filter interaktif (`ALL JOURNEY`, `WORK EXPERIENCE`, `EDUCATION & BACKGROUND`) dengan counter badge.
 
 ### ☕ 5. Sawer Kopi / Support Modal
@@ -126,65 +125,10 @@ my-porto/
 └── package.json
 ```
 
----
-
-## 🚀 Memulai / Getting Started
-
-### 1. Kloning Repositori
-```bash
-git clone https://github.com/HMPoetra/my-porto.git
-cd my-porto
-```
-
-### 2. Pasang Dependensi
-```bash
-npm install
-```
-
-### 3. Konfigurasi Environment Variables
-Buat file `.env.local` di direktori utama:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-### 4. Setup Database Supabase
-Jalankan file SQL berikut secara berurutan di **Supabase SQL Editor**:
-1. `supabase_schema.sql` — Membuat tabel dasar & data default.
-2. `supabase_cv_schema.sql` — Membuat tabel CV & bucket storage.
-3. `supabase_experience_schema.sql` — Membuat skema tabel pengalaman & akademik.
-4. `supabase_admin_setup.sql` — Mengaktifkan Row Level Security (RLS) & membuat akun Admin default.
-
-### 5. Jalankan Server Pengembangan
-```bash
-npm run dev
-```
-Buka [http://localhost:3000](http://localhost:3000) pada browser Anda.
-
----
-
-## 🔐 Akses CMS Admin Dashboard
-
-1. Buka [http://localhost:3000/admin](http://localhost:3000/admin).
-2. Anda akan diarahkan ke halaman login `/admin/login`.
-3. Masuk dengan akun administrator yang telah dikonfigurasi di Supabase.
-
----
-
-## 👨‍💻 Pengembang / Author
-
-**Hapsoro Mahendra Poetra**
-- 🌐 Website: [my-porto-gamma-self.vercel.app](https://my-porto-gamma-self.vercel.app/)
-- 🐙 GitHub: [@HMPoetra](https://github.com/HMPoetra)
-- 📧 Email: [hapsoromahendrap@gmail.com](mailto:hapsoromahendrap@gmail.com)
-- 🎓 Pendidikan: D3 Teknik Informatika — *Universitas Logistik dan Bisnis Internasional (ULBI)*
-
----
-
 ## 📜 Lisensi / License
 
-Proyek ini dilisensikan di bawah [MIT License](LICENSE). Bebas digunakan sebagai inspirasi portofolio Anda dengan tetap mencantumkan atribusi.
+Proyek ini dilisensikan di bawah [MIT License](LICENSE). Bebas digunakan sebagai inspirasi pengembangan portofolio modern.
 
 <div align="center">
-  <sub>Dibuat dengan ❤️ dan kopi oleh Hapsoro Mahendra Poetra</sub>
+  <sub>Built with ❤️ and Modern Web Technologies</sub>
 </div>
