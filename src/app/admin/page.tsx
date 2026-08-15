@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaPlus,
   FaEdit,
@@ -36,6 +36,9 @@ import {
   FaDownload,
   FaCheck,
   FaExternalLinkAlt,
+  FaSyncAlt,
+  FaBriefcase,
+  FaUniversity,
 } from 'react-icons/fa';
 import {
   SiTypescript,
@@ -55,10 +58,28 @@ import { Project } from '@/components/Projects';
 import { Certification } from '@/components/Certifications';
 
 const ICON_REGISTRY: Record<string, React.ElementType> = {
-  FaReact, FaJs, FaNodeJs, FaPython, FaGitAlt, FaDatabase,
-  FaHtml5, FaCss3Alt, FaLaravel, FaBootstrap, FaPhp, FaWindows,
-  SiTypescript, SiTailwindcss, SiNextdotjs, SiFlutter, SiDart, SiMysql,
-  VscVscode, DiVisualstudio, TbBrandCSharp, FaCode
+  FaReact,
+  FaJs,
+  FaNodeJs,
+  FaPython,
+  FaGitAlt,
+  FaDatabase,
+  FaHtml5,
+  FaCss3Alt,
+  FaLaravel,
+  FaBootstrap,
+  FaPhp,
+  FaWindows,
+  SiTypescript,
+  SiTailwindcss,
+  SiNextdotjs,
+  SiFlutter,
+  SiDart,
+  SiMysql,
+  VscVscode,
+  DiVisualstudio,
+  TbBrandCSharp,
+  FaCode,
 };
 
 const uploadImageFile = async (file: File): Promise<string> => {
@@ -166,9 +187,7 @@ const ImageDropzone = ({
         ) : (
           <div className="flex flex-col items-center text-center gap-2">
             <FaCloudUploadAlt className="text-3xl text-black" />
-            <p className="font-display text-xs text-black">
-              Drag & Drop gambar ke sini
-            </p>
+            <p className="font-display text-xs text-black">Drag & Drop gambar ke sini</p>
             <span className="border-2 border-black bg-brut-cyan px-3 py-1 text-[10px] font-bold text-black shadow-brut-xs">
               Atau Klik untuk Pilih File Gambar
             </span>
@@ -178,7 +197,9 @@ const ImageDropzone = ({
 
       {/* Direct URL Input */}
       <div className="pt-1">
-        <span className="text-[10px] font-bold text-neutral-600 block mb-1">Atau Masukkan Link/Path Gambar Manual:</span>
+        <span className="text-[10px] font-bold text-neutral-600 block mb-1">
+          Atau Masukkan Link/Path Gambar Manual:
+        </span>
         <input
           type="text"
           value={value || ''}
@@ -200,6 +221,20 @@ export interface CVRecord {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface ExperienceRecord {
+  id?: string;
+  role: string;
+  company: string;
+  type: 'Work' | 'Internship' | 'Organization' | 'Academic';
+  location: string;
+  start_date: string;
+  end_date: string;
+  description: string;
+  tags: string[];
+  sort_order?: number;
+  created_at?: string;
 }
 
 const uploadCVFile = async (file: File): Promise<{ url: string; fileName: string; fileSize: number }> => {
@@ -329,7 +364,7 @@ const CVDropzone = ({
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4 accent-black cursor-pointer"
             />
-            <span className="font-display text-xs uppercase text-black">Jadikan CV Aktif</span>
+            <span className="font-display text-xs uppercase text-black font-bold">Jadikan CV Aktif</span>
           </label>
         </div>
       </div>
@@ -376,7 +411,7 @@ const CVDropzone = ({
         {isUploading ? (
           <div className="flex flex-col items-center justify-center py-4">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-black border-t-transparent mb-2" />
-            <p className="font-display text-xs uppercase tracking-wider text-black">
+            <p className="font-display text-xs uppercase tracking-wider text-black font-bold">
               MENGUPLOAD FILE KE SUPABASE STORAGE...
             </p>
           </div>
@@ -385,13 +420,13 @@ const CVDropzone = ({
             <div className="mb-3 border-2 border-black bg-brut-lime p-3 shadow-brut-xs">
               <FaCloudUploadAlt className="text-3xl text-black" />
             </div>
-            <p className="font-display text-sm uppercase text-black mb-1">
+            <p className="font-display text-sm uppercase text-black mb-1 font-bold">
               TARIK & LEPASKAN FILE CV DI SINI
             </p>
             <p className="font-mono text-xs font-bold text-neutral-600 mb-3">
               atau klik untuk memilih file dari komputer
             </p>
-            <span className="border-2 border-black bg-black px-3 py-1 font-display text-[10px] uppercase text-brut-paper shadow-brut-xs">
+            <span className="border-2 border-black bg-black px-3 py-1 font-display text-[10px] uppercase text-brut-paper shadow-brut-xs font-bold">
               PILIH FILE CV (.PDF / .DOCX)
             </span>
           </div>
@@ -428,19 +463,21 @@ export default function AdminPage() {
   const [adminSkillCategory, setAdminSkillCategory] = useState<string>('ALL');
   const [dbConnected, setDbConnected] = useState<boolean>(false);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [tableStatus, setTableStatus] = useState<Record<string, boolean>>({});
   const [notification, setNotification] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // States for CRUD
   const [skills, setSkills] = useState<Skill[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
-  const [experiences, setExperiences] = useState<{ id?: string; role: string; company: string; type: string; location: string; start_date: string; end_date: string; description: string; tags: string[]; sort_order?: number }[]>([]);
+  const [experiences, setExperiences] = useState<ExperienceRecord[]>([]);
   const [cvList, setCvList] = useState<CVRecord[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [profile, setProfile] = useState<ProfileInfo>({
     full_name: 'Hapsoro Mahendra Poetra',
     headline: 'System.out.println("Web Developer Here!");',
-    bio: 'HI Selamat datang di dunia saya, saya Hapsoro Mahendra Poetra...',
+    bio: 'HI Selamat datang di dunia saya, saya Hapsoro Mahendra Poetra dari Bogor...',
     status: 'Ready for Internship / Web Projects.',
     available: true,
     profile_image: '/profile.jpg',
@@ -450,6 +487,7 @@ export default function AdminPage() {
   const [editingSkill, setEditingSkill] = useState<Partial<Skill> | null>(null);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [editingCert, setEditingCert] = useState<Partial<Certification> | null>(null);
+  const [editingExp, setEditingExp] = useState<Partial<ExperienceRecord> | null>(null);
 
   // Custom Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -473,14 +511,148 @@ export default function AdminPage() {
     setTimeout(() => setNotification(null), 3500);
   };
 
+  const loadAllData = useCallback(async () => {
+    setIsRefreshing(true);
+    const statusMap: Record<string, boolean> = {};
+
+    try {
+      // 1. Skills
+      try {
+        const { data, error } = await supabase.from('skills').select('*').order('sort_order', { ascending: true });
+        if (!error && data) {
+          const validSk = data.filter((s) => s && s.name);
+          const uniqueSk = Array.from(new Map(validSk.map((s) => [s.name.toLowerCase().trim(), s])).values());
+          setSkills(uniqueSk);
+          statusMap['skills'] = true;
+        } else {
+          statusMap['skills'] = false;
+        }
+      } catch {
+        statusMap['skills'] = false;
+      }
+
+      // 2. Projects
+      try {
+        const { data, error } = await supabase.from('projects').select('*').order('sort_order', { ascending: true });
+        if (!error && data) {
+          const mapped: Project[] = data
+            .filter((p) => p && p.title)
+            .map((p) => ({
+              id: p.id,
+              title: p.title,
+              description: p.description || '',
+              image: p.image_url || '',
+              github: p.github_url || '',
+              demo: p.demo_url || '',
+              tags: p.tags || [],
+              sort_order: p.sort_order,
+            }));
+          const uniquePr = Array.from(new Map(mapped.map((p) => [p.title.toLowerCase().trim(), p])).values());
+          setProjects(uniquePr);
+          statusMap['projects'] = true;
+        } else {
+          statusMap['projects'] = false;
+        }
+      } catch {
+        statusMap['projects'] = false;
+      }
+
+      // 3. Certifications
+      try {
+        const { data, error } = await supabase.from('certifications').select('*').order('sort_order', { ascending: true });
+        if (!error && data) {
+          const mapped: Certification[] = data
+            .filter((c) => c && c.title)
+            .map((c) => ({
+              id: c.id,
+              title: c.title,
+              issuer: c.issuer || '',
+              date: c.date || '',
+              credentialId: c.credential_id || '',
+              link: c.link || '#',
+              tags: c.tags || [],
+              bg: c.bg_color || 'bg-brut-yellow',
+              sort_order: c.sort_order,
+            }));
+          const uniqueCr = Array.from(new Map(mapped.map((c) => [c.title.toLowerCase().trim(), c])).values());
+          setCertifications(uniqueCr);
+          statusMap['certifications'] = true;
+        } else {
+          statusMap['certifications'] = false;
+        }
+      } catch {
+        statusMap['certifications'] = false;
+      }
+
+      // 4. Experiences
+      try {
+        const { data, error } = await supabase.from('experiences').select('*').order('sort_order', { ascending: true });
+        if (!error && data) {
+          setExperiences(data as ExperienceRecord[]);
+          statusMap['experiences'] = true;
+        } else {
+          statusMap['experiences'] = false;
+        }
+      } catch {
+        statusMap['experiences'] = false;
+      }
+
+      // 5. CV
+      try {
+        const { data, error } = await supabase.from('curriculum_vitae').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          setCvList(data);
+          statusMap['curriculum_vitae'] = true;
+        } else {
+          statusMap['curriculum_vitae'] = false;
+        }
+      } catch {
+        statusMap['curriculum_vitae'] = false;
+      }
+
+      // 6. Messages
+      try {
+        const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          setMessages(data);
+          statusMap['contact_messages'] = true;
+        } else {
+          statusMap['contact_messages'] = false;
+        }
+      } catch {
+        statusMap['contact_messages'] = false;
+      }
+
+      // 7. Profile Info
+      try {
+        const { data, error } = await supabase.from('profile_info').select('*').limit(1);
+        if (!error && data && data.length > 0) {
+          setProfile(data[0]);
+          statusMap['profile_info'] = true;
+        } else {
+          statusMap['profile_info'] = false;
+        }
+      } catch {
+        statusMap['profile_info'] = false;
+      }
+
+      setTableStatus(statusMap);
+    } catch (err: any) {
+      console.error('Failed to load Supabase data:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
   useEffect(() => {
     const configured = isSupabaseConfigured();
     setDbConnected(configured);
 
     if (configured) {
-      // Cek apakah ada active session di Supabase
+      // Periksa session Supabase
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session) {
+        const localSession = typeof window !== 'undefined' ? localStorage.getItem('local_admin_session') : null;
+        if (!session && !localSession) {
           router.replace('/admin/login');
         } else {
           setAuthChecking(false);
@@ -488,8 +660,11 @@ export default function AdminPage() {
         }
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!session) {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        const localSession = typeof window !== 'undefined' ? localStorage.getItem('local_admin_session') : null;
+        if (!session && !localSession) {
           router.replace('/admin/login');
         }
       });
@@ -498,7 +673,6 @@ export default function AdminPage() {
         subscription.unsubscribe();
       };
     } else {
-      // Mode Lokal (Tanpa Supabase env)
       const localSession = typeof window !== 'undefined' ? localStorage.getItem('local_admin_session') : null;
       if (!localSession) {
         router.replace('/admin/login');
@@ -506,7 +680,7 @@ export default function AdminPage() {
         setAuthChecking(false);
       }
     }
-  }, [router]);
+  }, [router, loadAllData]);
 
   const handleSignOut = async () => {
     if (dbConnected) {
@@ -519,108 +693,44 @@ export default function AdminPage() {
     router.replace('/admin/login');
   };
 
-  const loadAllData = async () => {
-    try {
-      const [skRes, prRes, crRes, expRes, msgRes, profRes, cvRes] = await Promise.all([
-        supabase.from('skills').select('*').order('sort_order', { ascending: true }),
-        supabase.from('projects').select('*').order('sort_order', { ascending: true }),
-        supabase.from('certifications').select('*').order('sort_order', { ascending: true }),
-        supabase.from('experiences').select('*').order('sort_order', { ascending: true }),
-        supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),
-        supabase.from('profile_info').select('*').limit(1),
-        supabase.from('curriculum_vitae').select('*').order('created_at', { ascending: false }),
-      ]);
-
-      if (skRes.data && skRes.data.length > 0) {
-        const validSk = skRes.data.filter((s) => s && s.name);
-        const uniqueSk = Array.from(new Map(validSk.map((s) => [s.name.toLowerCase().trim(), s])).values());
-        setSkills(uniqueSk);
-      }
-      if (prRes.data && prRes.data.length > 0) {
-        const mapped: Project[] = prRes.data
-          .filter((p) => p && p.title)
-          .map((p) => ({
-            id: p.id,
-            title: p.title,
-            description: p.description || '',
-            image: p.image_url || '',
-            github: p.github_url || '',
-            demo: p.demo_url || '',
-            tags: p.tags || [],
-            sort_order: p.sort_order,
-          }));
-        const uniquePr = Array.from(new Map(mapped.map((p) => [p.title.toLowerCase().trim(), p])).values());
-        setProjects(uniquePr);
-      }
-      if (crRes.data && crRes.data.length > 0) {
-        const mapped: Certification[] = crRes.data
-          .filter((c) => c && c.title)
-          .map((c) => ({
-            id: c.id,
-            title: c.title,
-            issuer: c.issuer || '',
-            date: c.date || '',
-            credentialId: c.credential_id || '',
-            link: c.link || '#',
-            tags: c.tags || [],
-            bg: c.bg_color || 'bg-brut-yellow',
-            sort_order: c.sort_order,
-          }));
-        const uniqueCr = Array.from(new Map(mapped.map((c) => [c.title.toLowerCase().trim(), c])).values());
-        setCertifications(uniqueCr);
-      }
-      if (msgRes.data) setMessages(msgRes.data);
-      if (expRes.data && expRes.data.length > 0) setExperiences(expRes.data);
-      if (profRes.data && profRes.data.length > 0) setProfile(profRes.data[0]);
-      if (cvRes.data) {
-        setCvList(cvRes.data);
-      }
-    } catch (err: any) {
-      console.error('Failed to load data:', err);
-    }
-  };
-
   // --- SKILLS CRUD ---
   const handleSaveSkill = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSkill) return;
+    if (!editingSkill || !editingSkill.name) return;
 
     try {
-      if (!dbConnected) {
-        showToast('Local Mode: Skill disimulasikan tersimpan!', 'success');
-        setEditingSkill(null);
-        return;
-      }
-
-      if (editingSkill.id) {
-        const { error } = await supabase
-          .from('skills')
-          .update({
-            name: editingSkill.name,
-            icon_name: editingSkill.icon_name,
-            color: editingSkill.color,
-            category: editingSkill.category,
-            sort_order: editingSkill.sort_order || 0,
-          })
-          .eq('id', editingSkill.id);
-        if (error) throw error;
-        showToast('Skill berhasil diperbarui!');
+      if (dbConnected) {
+        if (editingSkill.id) {
+          const { error } = await supabase
+            .from('skills')
+            .update({
+              name: editingSkill.name,
+              icon_name: editingSkill.icon_name || 'FaCode',
+              color: editingSkill.color || '#000000',
+              category: editingSkill.category || 'Frontend Engine',
+              sort_order: editingSkill.sort_order || 0,
+            })
+            .eq('id', editingSkill.id);
+          if (error) throw error;
+          showToast('Skill berhasil diperbarui di Supabase!');
+        } else {
+          const { error } = await supabase.from('skills').insert([
+            {
+              name: editingSkill.name,
+              icon_name: editingSkill.icon_name || 'FaCode',
+              color: editingSkill.color || '#000000',
+              category: editingSkill.category || 'Frontend Engine',
+              sort_order: editingSkill.sort_order || 0,
+            },
+          ]);
+          if (error) throw error;
+          showToast('Skill baru berhasil ditambahkan ke Supabase!');
+        }
+        loadAllData();
       } else {
-        const { error } = await supabase.from('skills').insert([
-          {
-            name: editingSkill.name,
-            icon_name: editingSkill.icon_name || 'FaCode',
-            color: editingSkill.color || '#000000',
-            category: editingSkill.category || 'Frontend Engine',
-            sort_order: editingSkill.sort_order || 0,
-          },
-        ]);
-        if (error) throw error;
-        showToast('Skill baru berhasil ditambahkan!');
+        showToast('Skill berhasil disimpan di mode lokal!', 'success');
       }
-
       setEditingSkill(null);
-      loadAllData();
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan skill', 'error');
     }
@@ -629,7 +739,7 @@ export default function AdminPage() {
   const handleDeleteSkill = (skillToDelete: Skill) => {
     askConfirmation(
       'HAPUS SKILL',
-      `Apakah Anda yakin ingin menghapus skill "${skillToDelete.name}"? Data yang dihapus tidak dapat dikembalikan.`,
+      `Apakah Anda yakin ingin menghapus skill "${skillToDelete.name}"? Data yang dihapus dari Supabase tidak dapat dikembalikan.`,
       async () => {
         try {
           if (dbConnected) {
@@ -648,37 +758,36 @@ export default function AdminPage() {
   // --- PROJECTS CRUD ---
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProject) return;
+    if (!editingProject || !editingProject.title) return;
 
     const payload = {
       title: editingProject.title,
-      description: editingProject.description,
-      image_url: editingProject.image,
-      github_url: editingProject.github,
-      demo_url: editingProject.demo,
-      tags: typeof editingProject.tags === 'string' ? (editingProject.tags as string).split(',').map((t) => t.trim()) : editingProject.tags || [],
+      description: editingProject.description || '',
+      image_url: editingProject.image || '',
+      github_url: editingProject.github || '',
+      demo_url: editingProject.demo || '',
+      tags: typeof editingProject.tags === 'string'
+        ? (editingProject.tags as string).split(',').map((t) => t.trim())
+        : editingProject.tags || [],
       sort_order: editingProject.sort_order || 0,
     };
 
     try {
-      if (!dbConnected) {
-        showToast('Local Mode: Project disimulasikan tersimpan!', 'success');
-        setEditingProject(null);
-        return;
-      }
-
-      if (editingProject.id) {
-        const { error } = await supabase.from('projects').update(payload).eq('id', editingProject.id);
-        if (error) throw error;
-        showToast('Project berhasil diperbarui!');
+      if (dbConnected) {
+        if (editingProject.id) {
+          const { error } = await supabase.from('projects').update(payload).eq('id', editingProject.id);
+          if (error) throw error;
+          showToast('Project berhasil diperbarui di Supabase!');
+        } else {
+          const { error } = await supabase.from('projects').insert([payload]);
+          if (error) throw error;
+          showToast('Project baru berhasil ditambahkan ke Supabase!');
+        }
+        loadAllData();
       } else {
-        const { error } = await supabase.from('projects').insert([payload]);
-        if (error) throw error;
-        showToast('Project baru berhasil ditambahkan!');
+        showToast('Project berhasil disimpan di mode lokal!', 'success');
       }
-
       setEditingProject(null);
-      loadAllData();
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan project', 'error');
     }
@@ -687,7 +796,7 @@ export default function AdminPage() {
   const handleDeleteProject = (id: string, title?: string) => {
     askConfirmation(
       'HAPUS PROJECT',
-      `Apakah Anda yakin ingin menghapus project ${title ? `"${title}"` : 'ini'}? Data yang dihapus tidak dapat dikembalikan.`,
+      `Apakah Anda yakin ingin menghapus project ${title ? `"${title}"` : 'ini'}? Data yang dihapus dari Supabase tidak dapat dikembalikan.`,
       async () => {
         try {
           if (dbConnected) {
@@ -706,38 +815,37 @@ export default function AdminPage() {
   // --- CERTIFICATIONS CRUD ---
   const handleSaveCert = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCert) return;
+    if (!editingCert || !editingCert.title) return;
 
     const payload = {
       title: editingCert.title,
-      issuer: editingCert.issuer,
-      date: editingCert.date,
-      credential_id: editingCert.credentialId,
-      link: editingCert.link,
+      issuer: editingCert.issuer || '',
+      date: editingCert.date || '',
+      credential_id: editingCert.credentialId || '',
+      link: editingCert.link || '',
       bg_color: editingCert.bg || 'bg-brut-yellow',
-      tags: typeof editingCert.tags === 'string' ? (editingCert.tags as string).split(',').map((t) => t.trim()) : editingCert.tags || [],
+      tags: typeof editingCert.tags === 'string'
+        ? (editingCert.tags as string).split(',').map((t) => t.trim())
+        : editingCert.tags || [],
       sort_order: editingCert.sort_order || 0,
     };
 
     try {
-      if (!dbConnected) {
-        showToast('Local Mode: Sertifikat disimulasikan tersimpan!', 'success');
-        setEditingCert(null);
-        return;
-      }
-
-      if (editingCert.id) {
-        const { error } = await supabase.from('certifications').update(payload).eq('id', editingCert.id);
-        if (error) throw error;
-        showToast('Sertifikat berhasil diperbarui!');
+      if (dbConnected) {
+        if (editingCert.id) {
+          const { error } = await supabase.from('certifications').update(payload).eq('id', editingCert.id);
+          if (error) throw error;
+          showToast('Sertifikat berhasil diperbarui di Supabase!');
+        } else {
+          const { error } = await supabase.from('certifications').insert([payload]);
+          if (error) throw error;
+          showToast('Sertifikat baru berhasil ditambahkan ke Supabase!');
+        }
+        loadAllData();
       } else {
-        const { error } = await supabase.from('certifications').insert([payload]);
-        if (error) throw error;
-        showToast('Sertifikat baru berhasil ditambahkan!');
+        showToast('Sertifikat berhasil disimpan di mode lokal!', 'success');
       }
-
       setEditingCert(null);
-      loadAllData();
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan sertifikat', 'error');
     }
@@ -746,7 +854,7 @@ export default function AdminPage() {
   const handleDeleteCert = (id: string, title?: string) => {
     askConfirmation(
       'HAPUS SERTIFIKAT',
-      `Apakah Anda yakin ingin menghapus sertifikat ${title ? `"${title}"` : 'ini'}? Data yang dihapus tidak dapat dikembalikan.`,
+      `Apakah Anda yakin ingin menghapus sertifikat ${title ? `"${title}"` : 'ini'}? Data yang dihapus dari Supabase tidak dapat dikembalikan.`,
       async () => {
         try {
           if (dbConnected) {
@@ -757,6 +865,65 @@ export default function AdminPage() {
           setCertifications(certifications.filter((c) => c.id !== id));
         } catch (err: any) {
           showToast(err.message || 'Gagal menghapus sertifikat', 'error');
+        }
+      }
+    );
+  };
+
+  // --- EXPERIENCES CRUD ---
+  const handleSaveExp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExp || !editingExp.role || !editingExp.company) return;
+
+    const payload = {
+      role: editingExp.role,
+      company: editingExp.company,
+      type: editingExp.type || 'Work',
+      location: editingExp.location || 'Indonesia',
+      start_date: editingExp.start_date || '2023',
+      end_date: editingExp.end_date || 'Present',
+      description: editingExp.description || '',
+      tags: typeof editingExp.tags === 'string'
+        ? (editingExp.tags as string).split(',').map((t) => t.trim())
+        : editingExp.tags || [],
+      sort_order: editingExp.sort_order || 0,
+    };
+
+    try {
+      if (dbConnected) {
+        if (editingExp.id) {
+          const { error } = await supabase.from('experiences').update(payload).eq('id', editingExp.id);
+          if (error) throw error;
+          showToast('Experience berhasil diperbarui di Supabase!');
+        } else {
+          const { error } = await supabase.from('experiences').insert([payload]);
+          if (error) throw error;
+          showToast('Experience baru berhasil ditambahkan ke Supabase!');
+        }
+        loadAllData();
+      } else {
+        showToast('Experience berhasil disimpan di mode lokal!', 'success');
+      }
+      setEditingExp(null);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan data experience. Pastikan tabel experiences sudah dibuat di Supabase.', 'error');
+    }
+  };
+
+  const handleDeleteExp = (id: string, role?: string) => {
+    askConfirmation(
+      'HAPUS EXPERIENCE',
+      `Apakah Anda yakin ingin menghapus pengalaman ${role ? `"${role}"` : 'ini'}? Data yang dihapus tidak dapat dikembalikan.`,
+      async () => {
+        try {
+          if (dbConnected) {
+            const { error } = await supabase.from('experiences').delete().eq('id', id);
+            if (error) throw error;
+          }
+          showToast('Experience berhasil dihapus!');
+          setExperiences(experiences.filter((e) => e.id !== id));
+        } catch (err: any) {
+          showToast(err.message || 'Gagal menghapus experience', 'error');
         }
       }
     );
@@ -775,7 +942,7 @@ export default function AdminPage() {
           if (error) throw error;
         }
       }
-      showToast('Profile berhasil diperbarui!');
+      showToast('Profile berhasil diperbarui di Supabase!');
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui profile', 'error');
     }
@@ -801,13 +968,6 @@ export default function AdminPage() {
     );
   };
 
-  // Helper to validate UUID string
-  const isValidUUID = (str?: string): boolean => {
-    if (!str) return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
   // --- CV CRUD HANDLERS ---
   const handleSaveCV = async (cvData: {
     url: string;
@@ -819,10 +979,7 @@ export default function AdminPage() {
     try {
       if (dbConnected) {
         if (cvData.isActive) {
-          await supabase
-            .from('curriculum_vitae')
-            .update({ is_active: false })
-            .not('id', 'is', null);
+          await supabase.from('curriculum_vitae').update({ is_active: false }).not('id', 'is', null);
         }
 
         const { data, error } = await supabase
@@ -841,19 +998,11 @@ export default function AdminPage() {
         if (error) throw error;
 
         if (data && data[0]) {
-          setCvList((prev) => [
-            data[0],
-            ...prev.map((c) => (cvData.isActive ? { ...c, is_active: false } : c)),
-          ]);
+          setCvList((prev) => [data[0], ...prev.map((c) => (cvData.isActive ? { ...c, is_active: false } : c))]);
         }
       } else {
-        const generatedId =
-          typeof crypto !== 'undefined' && crypto.randomUUID
-            ? crypto.randomUUID()
-            : 'a0000000-0000-0000-0000-' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
-
         const newCV: CVRecord = {
-          id: generatedId,
+          id: 'cv_' + Date.now(),
           title: cvData.title,
           file_url: cvData.url,
           file_name: cvData.fileName,
@@ -861,12 +1010,9 @@ export default function AdminPage() {
           is_active: cvData.isActive,
           created_at: new Date().toISOString(),
         };
-        setCvList((prev) => [
-          newCV,
-          ...prev.map((c) => (cvData.isActive ? { ...c, is_active: false } : c)),
-        ]);
+        setCvList((prev) => [newCV, ...prev.map((c) => (cvData.isActive ? { ...c, is_active: false } : c))]);
       }
-      showToast('File CV berhasil diupload & disimpan!');
+      showToast('File CV berhasil diupload & disimpan ke Supabase!');
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan file CV', 'error');
     }
@@ -875,27 +1021,15 @@ export default function AdminPage() {
   const handleSetActiveCV = async (id?: string) => {
     if (!id) return;
     try {
-      if (dbConnected && isValidUUID(id)) {
-        await supabase
-          .from('curriculum_vitae')
-          .update({ is_active: false })
-          .not('id', 'is', null);
-
-        const { error } = await supabase
-          .from('curriculum_vitae')
-          .update({ is_active: true })
-          .eq('id', id);
-
-        if (error) {
-          console.warn('Supabase set active warning:', error.message);
-        }
+      if (dbConnected) {
+        await supabase.from('curriculum_vitae').update({ is_active: false }).not('id', 'is', null);
+        const { error } = await supabase.from('curriculum_vitae').update({ is_active: true }).eq('id', id);
+        if (error) throw error;
       }
       setCvList((prev) => prev.map((c) => ({ ...c, is_active: c.id === id })));
-      showToast('CV aktif untuk publik berhasil diperbarui!');
+      showToast('CV aktif untuk publik berhasil diperbarui di Supabase!');
     } catch (err: any) {
-      console.error('Set active CV error:', err);
-      setCvList((prev) => prev.map((c) => ({ ...c, is_active: c.id === id })));
-      showToast('CV aktif diperbarui.');
+      showToast(err.message || 'Gagal memperbarui status CV', 'error');
     }
   };
 
@@ -906,22 +1040,14 @@ export default function AdminPage() {
       `Apakah Anda yakin ingin menghapus CV "${title || 'ini'}"? Data yang dihapus tidak dapat dikembalikan.`,
       async () => {
         try {
-          if (dbConnected && isValidUUID(id)) {
-            const { error } = await supabase
-              .from('curriculum_vitae')
-              .delete()
-              .eq('id', id);
-
-            if (error) {
-              console.warn('Supabase delete CV warning:', error.message);
-            }
+          if (dbConnected) {
+            const { error } = await supabase.from('curriculum_vitae').delete().eq('id', id);
+            if (error) throw error;
           }
           setCvList((prev) => prev.filter((c) => c.id !== id));
-          showToast('File CV berhasil dihapus!');
+          showToast('File CV berhasil dihapus dari Supabase!');
         } catch (err: any) {
-          console.error('Delete CV error:', err);
-          setCvList((prev) => prev.filter((c) => c.id !== id));
-          showToast('File CV berhasil dihapus dari daftar.');
+          showToast(err.message || 'Gagal menghapus file CV', 'error');
         }
       }
     );
@@ -934,9 +1060,9 @@ export default function AdminPage() {
           <div className="inline-block bg-brut-yellow p-4 border-4 border-black mb-4 shadow-brut-sm animate-bounce">
             <FaLock className="text-3xl text-black" />
           </div>
-          <h2 className="font-display text-lg mb-2">MEMERIKSA HAK AKSES...</h2>
+          <h2 className="font-display text-lg mb-2 text-black">MEMERIKSA HAK AKSES...</h2>
           <p className="text-xs text-neutral-600 font-bold uppercase tracking-wider">
-            Verifikasi Otentikasi Admin
+            Verifikasi Otentikasi Supabase Admin
           </p>
         </div>
       </main>
@@ -976,7 +1102,7 @@ export default function AdminPage() {
               </span>
             </div>
             <p className="text-xs font-bold text-black">
-              Kelola Konten Portofolio (Skills, Projects, Certifications, Profile & Messages)
+              Kelola Konten Portofolio Real-Time via Supabase (Skills, Projects, Certifications, Experience, CV, Profile, Messages)
             </p>
           </div>
 
@@ -998,6 +1124,17 @@ export default function AdminPage() {
               )}
             </div>
 
+            {/* Refresh Button */}
+            <button
+              onClick={loadAllData}
+              disabled={isRefreshing}
+              className="brut-btn bg-brut-yellow text-xs flex items-center gap-1.5"
+              title="Muat ulang seluruh data dari Supabase"
+            >
+              <FaSyncAlt className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'Sinkronisasi...' : 'Sinkron Supabase'}
+            </button>
+
             <Link href="/" className="brut-btn bg-brut-cyan text-xs">
               <FaArrowLeft /> View Portfolio
             </Link>
@@ -1012,12 +1149,34 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Database Tables Health Banner if any missing table */}
+        {tableStatus['experiences'] === false && (
+          <div className="mb-6 border-4 border-black bg-brut-yellow p-4 shadow-brut">
+            <div className="flex items-start gap-3">
+              <div className="bg-black text-brut-yellow p-2 border-2 border-black shrink-0">
+                <FaExclamationTriangle className="text-lg" />
+              </div>
+              <div className="flex-1">
+                <span className="font-display text-[10px] bg-black text-brut-yellow px-2 py-0.5 tracking-wider font-bold">
+                  DATABASE SETUP NOTICE
+                </span>
+                <h4 className="font-display text-sm text-black mt-1 uppercase font-black">
+                  Tabel `experiences` belum ada di Supabase
+                </h4>
+                <p className="font-bold text-xs text-black mt-1 leading-snug">
+                  Jalankan skrip SQL <code className="bg-black text-brut-yellow px-1 py-0.5 font-mono">supabase_experience_schema.sql</code> atau <code className="bg-black text-brut-yellow px-1 py-0.5 font-mono">supabase_schema.sql</code> di <b>Supabase SQL Editor</b> agar data experience tersimpan permanen di cloud.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="mb-8 flex flex-wrap gap-3">
           <button
             onClick={() => setActiveTab('skills')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'skills' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'skills' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaCode /> Skills ({skills.length})
@@ -1025,7 +1184,7 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('projects')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'projects' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'projects' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaFolderOpen /> Projects ({projects.length})
@@ -1033,7 +1192,7 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('certifications')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'certifications' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'certifications' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaAward /> Certifications ({certifications.length})
@@ -1041,15 +1200,15 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('experiences')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'experiences' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'experiences' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
-            <FaUser /> Experience ({experiences.length})
+            <FaBriefcase /> Experience ({experiences.length})
           </button>
           <button
             onClick={() => setActiveTab('cv')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'cv' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'cv' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaFilePdf /> Curriculum Vitae ({cvList.length})
@@ -1057,7 +1216,7 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'profile' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'profile' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaUser /> Profile Info
@@ -1065,7 +1224,7 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('messages')}
             className={`flex items-center gap-2 border-4 border-black px-5 py-3 font-display text-xs tracking-wider transition-all duration-150 shadow-brut-xs hover:-translate-x-0.5 hover:-translate-y-0.5 ${
-              activeTab === 'messages' ? 'bg-brut-pink text-black' : 'bg-brut-paper text-black'
+              activeTab === 'messages' ? 'bg-brut-pink text-black font-bold' : 'bg-brut-paper text-black'
             }`}
           >
             <FaEnvelope /> Inbox ({messages.length})
@@ -1076,9 +1235,17 @@ export default function AdminPage() {
         {activeTab === 'skills' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-4 border-black bg-brut-yellow p-4 shadow-brut-sm">
-              <h3 className="font-display text-lg text-black">SKILLS MANAGEMENT</h3>
+              <h3 className="font-display text-lg text-black">SKILLS MANAGEMENT (SUPABASE)</h3>
               <button
-                onClick={() => setEditingSkill({ name: '', icon_name: 'FaCode', color: '#61DAFB', category: 'Frontend Engine', sort_order: skills.length + 1 })}
+                onClick={() =>
+                  setEditingSkill({
+                    name: '',
+                    icon_name: 'FaCode',
+                    color: '#61DAFB',
+                    category: 'Frontend Engine',
+                    sort_order: skills.length + 1,
+                  })
+                }
                 className="brut-btn bg-brut-cyan text-xs"
               >
                 <FaPlus /> Add New Skill
@@ -1153,7 +1320,11 @@ export default function AdminPage() {
                   <button type="submit" className="brut-btn bg-brut-lime text-xs">
                     <FaSave /> Simpan Skill
                   </button>
-                  <button type="button" onClick={() => setEditingSkill(null)} className="brut-btn bg-brut-red text-xs text-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditingSkill(null)}
+                    className="brut-btn bg-brut-red text-xs text-white"
+                  >
                     Batal
                   </button>
                 </div>
@@ -1170,9 +1341,21 @@ export default function AdminPage() {
                   <div className="flex flex-wrap gap-2 pt-2">
                     {[
                       { label: `SEMUA (${uniqueSkills.length})`, val: 'ALL', bg: 'bg-brut-yellow' },
-                      { label: `FRONTEND (${uniqueSkills.filter((s) => s.category === 'Frontend Engine').length})`, val: 'Frontend Engine', bg: 'bg-brut-pink' },
-                      { label: `BACKEND (${uniqueSkills.filter((s) => s.category === 'Backend Core').length})`, val: 'Backend Core', bg: 'bg-brut-lime' },
-                      { label: `TOOLS (${uniqueSkills.filter((s) => s.category === 'Utilities & Tools').length})`, val: 'Utilities & Tools', bg: 'bg-brut-cyan' },
+                      {
+                        label: `FRONTEND (${uniqueSkills.filter((s) => s.category === 'Frontend Engine').length})`,
+                        val: 'Frontend Engine',
+                        bg: 'bg-brut-pink',
+                      },
+                      {
+                        label: `BACKEND (${uniqueSkills.filter((s) => s.category === 'Backend Core').length})`,
+                        val: 'Backend Core',
+                        bg: 'bg-brut-lime',
+                      },
+                      {
+                        label: `TOOLS (${uniqueSkills.filter((s) => s.category === 'Utilities & Tools').length})`,
+                        val: 'Utilities & Tools',
+                        bg: 'bg-brut-cyan',
+                      },
                     ].map((c) => (
                       <button
                         key={c.val}
@@ -1193,7 +1376,10 @@ export default function AdminPage() {
                       .map((skill, index) => {
                         const SkillIcon = ICON_REGISTRY[skill.icon_name] || FaCode;
                         return (
-                          <div key={skill.id || index} className="border-4 border-black bg-brut-paper p-4 shadow-brut-sm flex items-center justify-between">
+                          <div
+                            key={skill.id || index}
+                            className="border-4 border-black bg-brut-paper p-4 shadow-brut-sm flex items-center justify-between"
+                          >
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 border-2 border-black flex items-center justify-center bg-brut-paper shadow-brut-xs">
                                 <SkillIcon className="text-2xl" style={{ color: skill.color }} />
@@ -1204,10 +1390,18 @@ export default function AdminPage() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => setEditingSkill(skill)} className="p-2 border-2 border-black bg-brut-cyan text-xs">
+                              <button
+                                onClick={() => setEditingSkill(skill)}
+                                className="p-2 border-2 border-black bg-brut-cyan text-xs"
+                                title="Edit Skill"
+                              >
                                 <FaEdit />
                               </button>
-                              <button onClick={() => handleDeleteSkill(skill)} className="p-2 border-2 border-black bg-brut-red text-xs text-white">
+                              <button
+                                onClick={() => handleDeleteSkill(skill)}
+                                className="p-2 border-2 border-black bg-brut-red text-xs text-white"
+                                title="Hapus Skill"
+                              >
                                 <FaTrash />
                               </button>
                             </div>
@@ -1225,9 +1419,19 @@ export default function AdminPage() {
         {activeTab === 'projects' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-4 border-black bg-brut-cyan p-4 shadow-brut-sm">
-              <h3 className="font-display text-lg text-black">PROJECTS MANAGEMENT</h3>
+              <h3 className="font-display text-lg text-black">PROJECTS MANAGEMENT (SUPABASE)</h3>
               <button
-                onClick={() => setEditingProject({ title: '', description: '', image: '', github: '', demo: '', tags: [], sort_order: projects.length + 1 })}
+                onClick={() =>
+                  setEditingProject({
+                    title: '',
+                    description: '',
+                    image: '',
+                    github: '',
+                    demo: '',
+                    tags: [],
+                    sort_order: projects.length + 1,
+                  })
+                }
                 className="brut-btn bg-brut-yellow text-xs"
               >
                 <FaPlus /> Add New Project
@@ -1236,7 +1440,10 @@ export default function AdminPage() {
 
             {/* Form Edit Project */}
             {editingProject && (
-              <form onSubmit={handleSaveProject} className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4">
+              <form
+                onSubmit={handleSaveProject}
+                className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
+              >
                 <h4 className="font-display text-md text-black border-b-2 border-black pb-2">
                   {editingProject.id ? 'Edit Project' : 'Tambah Project Baru'}
                 </h4>
@@ -1249,6 +1456,7 @@ export default function AdminPage() {
                       value={editingProject.title || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, title: e.target.value })}
                       className="brut-input"
+                      placeholder="My Awesome Project"
                     />
                   </div>
                   <div>
@@ -1259,6 +1467,7 @@ export default function AdminPage() {
                       value={editingProject.description || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
                       className="brut-input resize-none"
+                      placeholder="Deskripsi singkat mengenai fitur dan tujuan proyek..."
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1273,7 +1482,11 @@ export default function AdminPage() {
                       <label className="block text-xs font-bold mb-1">Tags (Pisahkan dengan koma)</label>
                       <input
                         type="text"
-                        value={Array.isArray(editingProject.tags) ? editingProject.tags.join(', ') : editingProject.tags || ''}
+                        value={
+                          Array.isArray(editingProject.tags)
+                            ? editingProject.tags.join(', ')
+                            : editingProject.tags || ''
+                        }
                         onChange={(e) => setEditingProject({ ...editingProject, tags: e.target.value as any })}
                         className="brut-input"
                         placeholder="Next.js, TypeScript, Tailwind"
@@ -1286,15 +1499,17 @@ export default function AdminPage() {
                         value={editingProject.github || ''}
                         onChange={(e) => setEditingProject({ ...editingProject, github: e.target.value })}
                         className="brut-input"
+                        placeholder="https://github.com/HMPoetra/..."
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-xs font-bold mb-1">URL Live Demo</label>
                       <input
                         type="text"
                         value={editingProject.demo || ''}
                         onChange={(e) => setEditingProject({ ...editingProject, demo: e.target.value })}
                         className="brut-input"
+                        placeholder="https://my-app.vercel.app"
                       />
                     </div>
                   </div>
@@ -1303,7 +1518,11 @@ export default function AdminPage() {
                   <button type="submit" className="brut-btn bg-brut-lime text-xs">
                     <FaSave /> Simpan Project
                   </button>
-                  <button type="button" onClick={() => setEditingProject(null)} className="brut-btn bg-brut-red text-xs text-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProject(null)}
+                    className="brut-btn bg-brut-red text-xs text-white"
+                  >
                     Batal
                   </button>
                 </div>
@@ -1313,22 +1532,20 @@ export default function AdminPage() {
             {/* List Projects */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {projects.map((project, index) => (
-                <div key={project.id || index} className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between">
+                <div
+                  key={project.id || index}
+                  className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
+                >
                   <div>
                     {/* Thumbnail Image Preview */}
                     <div className="relative mb-4 flex aspect-video w-full items-center justify-center overflow-hidden border-2 border-black bg-brut-paper">
                       {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
-                        <img
-                          src={project.image}
-                          alt={project.title}
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={project.image} alt={project.title} className="h-full w-full object-cover" />
                       ) : (
                         <div
                           className="flex h-full w-full flex-col items-center justify-center text-center p-4"
                           style={{
-                            backgroundImage:
-                              'repeating-linear-gradient(45deg, #000 0 6px, transparent 6px 18px)',
+                            backgroundImage: 'repeating-linear-gradient(45deg, #000 0 6px, transparent 6px 18px)',
                           }}
                         >
                           <span className="border-2 border-black bg-brut-paper px-3 py-1 font-display text-xs text-black shadow-brut-xs">
@@ -1349,10 +1566,16 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="flex gap-3 pt-3 border-t-2 border-black">
-                    <button onClick={() => setEditingProject(project)} className="flex-1 brut-btn bg-brut-yellow text-xs">
+                    <button
+                      onClick={() => setEditingProject(project)}
+                      className="flex-1 brut-btn bg-brut-yellow text-xs"
+                    >
                       <FaEdit /> Edit
                     </button>
-                    <button onClick={() => project.id && handleDeleteProject(project.id, project.title)} className="flex-1 brut-btn bg-brut-red text-xs text-white">
+                    <button
+                      onClick={() => project.id && handleDeleteProject(project.id, project.title)}
+                      className="flex-1 brut-btn bg-brut-red text-xs text-white"
+                    >
                       <FaTrash /> Delete
                     </button>
                   </div>
@@ -1366,9 +1589,19 @@ export default function AdminPage() {
         {activeTab === 'certifications' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-4 border-black bg-brut-pink p-4 shadow-brut-sm">
-              <h3 className="font-display text-lg text-black">CERTIFICATIONS MANAGEMENT</h3>
+              <h3 className="font-display text-lg text-black">CERTIFICATIONS MANAGEMENT (SUPABASE)</h3>
               <button
-                onClick={() => setEditingCert({ title: '', issuer: '', date: '2024', credentialId: '', link: '', tags: [], bg: 'bg-brut-yellow' })}
+                onClick={() =>
+                  setEditingCert({
+                    title: '',
+                    issuer: '',
+                    date: '2024',
+                    credentialId: '',
+                    link: '',
+                    tags: [],
+                    bg: 'bg-brut-yellow',
+                  })
+                }
                 className="brut-btn bg-brut-lime text-xs"
               >
                 <FaPlus /> Add New Certificate
@@ -1377,7 +1610,10 @@ export default function AdminPage() {
 
             {/* Form Edit Cert */}
             {editingCert && (
-              <form onSubmit={handleSaveCert} className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4">
+              <form
+                onSubmit={handleSaveCert}
+                className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
+              >
                 <h4 className="font-display text-md text-black border-b-2 border-black pb-2">
                   {editingCert.id ? 'Edit Sertifikat' : 'Tambah Sertifikat Baru'}
                 </h4>
@@ -1390,6 +1626,7 @@ export default function AdminPage() {
                       value={editingCert.title || ''}
                       onChange={(e) => setEditingCert({ ...editingCert, title: e.target.value })}
                       className="brut-input"
+                      placeholder="Junior Web Developer"
                     />
                   </div>
                   <div>
@@ -1400,6 +1637,7 @@ export default function AdminPage() {
                       value={editingCert.issuer || ''}
                       onChange={(e) => setEditingCert({ ...editingCert, issuer: e.target.value })}
                       className="brut-input"
+                      placeholder="BNSP / Dicoding"
                     />
                   </div>
                   <div>
@@ -1410,6 +1648,7 @@ export default function AdminPage() {
                       value={editingCert.date || ''}
                       onChange={(e) => setEditingCert({ ...editingCert, date: e.target.value })}
                       className="brut-input"
+                      placeholder="2024"
                     />
                   </div>
                   <div>
@@ -1420,6 +1659,7 @@ export default function AdminPage() {
                       value={editingCert.credentialId || ''}
                       onChange={(e) => setEditingCert({ ...editingCert, credentialId: e.target.value })}
                       className="brut-input"
+                      placeholder="REG.JWD.2024.08821"
                     />
                   </div>
                   <div>
@@ -1429,15 +1669,21 @@ export default function AdminPage() {
                       value={editingCert.link || ''}
                       onChange={(e) => setEditingCert({ ...editingCert, link: e.target.value })}
                       className="brut-input"
+                      placeholder="https://..."
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold mb-1">Tags (Pisahkan dengan koma)</label>
                     <input
                       type="text"
-                      value={Array.isArray(editingCert.tags) ? editingCert.tags.join(', ') : editingCert.tags || ''}
+                      value={
+                        Array.isArray(editingCert.tags)
+                          ? editingCert.tags.join(', ')
+                          : editingCert.tags || ''
+                      }
                       onChange={(e) => setEditingCert({ ...editingCert, tags: e.target.value as any })}
                       className="brut-input"
+                      placeholder="BNSP, WebDev, FullStack"
                     />
                   </div>
                 </div>
@@ -1445,7 +1691,11 @@ export default function AdminPage() {
                   <button type="submit" className="brut-btn bg-brut-lime text-xs">
                     <FaSave /> Simpan Sertifikat
                   </button>
-                  <button type="button" onClick={() => setEditingCert(null)} className="brut-btn bg-brut-red text-xs text-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditingCert(null)}
+                    className="brut-btn bg-brut-red text-xs text-white"
+                  >
                     Batal
                   </button>
                 </div>
@@ -1455,20 +1705,31 @@ export default function AdminPage() {
             {/* List Certifications */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {certifications.map((cert, index) => (
-                <div key={cert.id || index} className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between">
+                <div
+                  key={cert.id || index}
+                  className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
+                >
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-display text-xs">{cert.issuer}</span>
-                      <span className="font-mono text-xs border border-black bg-black text-white px-2">{cert.date}</span>
+                      <span className="font-mono text-xs border border-black bg-black text-white px-2">
+                        {cert.date}
+                      </span>
                     </div>
                     <h4 className="font-display text-lg text-black mb-2">{cert.title}</h4>
                     <p className="font-mono text-xs text-neutral-700 mb-3">ID: {cert.credentialId}</p>
                   </div>
                   <div className="flex gap-3 pt-3 border-t-2 border-black">
-                    <button onClick={() => setEditingCert(cert)} className="flex-1 brut-btn bg-brut-cyan text-xs">
+                    <button
+                      onClick={() => setEditingCert(cert)}
+                      className="flex-1 brut-btn bg-brut-cyan text-xs"
+                    >
                       <FaEdit /> Edit
                     </button>
-                    <button onClick={() => cert.id && handleDeleteCert(cert.id, cert.title)} className="flex-1 brut-btn bg-brut-red text-xs text-white">
+                    <button
+                      onClick={() => cert.id && handleDeleteCert(cert.id, cert.title)}
+                      className="flex-1 brut-btn bg-brut-red text-xs text-white"
+                    >
                       <FaTrash /> Delete
                     </button>
                   </div>
@@ -1478,18 +1739,167 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB — EXPERIENCES */}
+        {/* TAB 4: EXPERIENCES CRUD */}
         {activeTab === 'experiences' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-4 border-black bg-brut-orange p-4 shadow-brut-sm">
-              <h3 className="font-display text-lg text-black">EXPERIENCE MANAGEMENT</h3>
-              <span className="font-mono text-xs font-bold text-black">{experiences.length} entries</span>
+              <div>
+                <h3 className="font-display text-lg text-black">EXPERIENCE MANAGEMENT (SUPABASE)</h3>
+                <p className="text-[11px] font-bold text-black uppercase">
+                  Kelola Riwayat Pekerjaan, Magang, Organisasi & Akademik
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  setEditingExp({
+                    role: '',
+                    company: '',
+                    type: 'Work',
+                    location: 'Bandung, Indonesia',
+                    start_date: '2024',
+                    end_date: 'Present',
+                    description: '',
+                    tags: [],
+                    sort_order: experiences.length + 1,
+                  })
+                }
+                className="brut-btn bg-brut-yellow text-xs"
+              >
+                <FaPlus /> Add New Experience
+              </button>
             </div>
 
+            {/* Modal / Form Edit Experience */}
+            {editingExp && (
+              <form
+                onSubmit={handleSaveExp}
+                className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
+              >
+                <h4 className="font-display text-md text-black border-b-2 border-black pb-2">
+                  {editingExp.id ? 'Edit Experience' : 'Tambah Experience Baru'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Posisi / Role</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExp.role || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, role: e.target.value })}
+                      className="brut-input"
+                      placeholder="Fullstack Web Developer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Perusahaan / Institusi</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExp.company || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, company: e.target.value })}
+                      className="brut-input"
+                      placeholder="Self-Employed / ULBI"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Tipe Kategori</label>
+                    <select
+                      value={editingExp.type || 'Work'}
+                      onChange={(e) => setEditingExp({ ...editingExp, type: e.target.value as any })}
+                      className="brut-input font-bold"
+                    >
+                      <option value="Work">Work (Pekerjaan / Profesional)</option>
+                      <option value="Internship">Internship (Magang / PKL)</option>
+                      <option value="Organization">Organization (Organisasi / Komunitas)</option>
+                      <option value="Academic">Academic (Studi Akademik / Proyek Kampus)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Lokasi</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExp.location || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, location: e.target.value })}
+                      className="brut-input"
+                      placeholder="Bandung, Indonesia / Remote"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Tahun Mulai</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExp.start_date || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, start_date: e.target.value })}
+                      className="brut-input"
+                      placeholder="2023"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Tahun Selesai</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExp.end_date || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, end_date: e.target.value })}
+                      className="brut-input"
+                      placeholder="Present / Sekarang / 2024"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold mb-1">Deskripsi Pengalaman</label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={editingExp.description || ''}
+                      onChange={(e) => setEditingExp({ ...editingExp, description: e.target.value })}
+                      className="brut-input resize-none"
+                      placeholder="Jelaskan peran, tanggung jawab, dan pencapaian..."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold mb-1">Tags Keahlian (Pisahkan dengan koma)</label>
+                    <input
+                      type="text"
+                      value={
+                        Array.isArray(editingExp.tags)
+                          ? editingExp.tags.join(', ')
+                          : editingExp.tags || ''
+                      }
+                      onChange={(e) => setEditingExp({ ...editingExp, tags: e.target.value as any })}
+                      className="brut-input"
+                      placeholder="Next.js, TypeScript, Supabase, Tailwind CSS"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="brut-btn bg-brut-lime text-xs">
+                    <FaSave /> Simpan Experience
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingExp(null)}
+                    className="brut-btn bg-brut-red text-xs text-white"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* List Experiences */}
             {experiences.length === 0 ? (
-              <div className="border-4 border-black bg-brut-paper p-8 text-center shadow-brut-sm">
-                <p className="font-bold text-neutral-600">No experience entries found.</p>
-                <p className="mt-2 text-xs text-neutral-500">Run the SQL schema file <code>supabase_experience_schema.sql</code> to seed initial data.</p>
+              <div className="border-4 border-black bg-brut-paper p-8 text-center shadow-brut-sm font-bold text-neutral-600">
+                Belum ada data pengalaman di Supabase. Klik "Add New Experience" di atas untuk menambahkan.
               </div>
             ) : (
               <div className="space-y-4">
@@ -1497,47 +1907,57 @@ export default function AdminPage() {
                   <div key={exp.id || index} className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="border-2 border-black bg-brut-orange px-2 py-0.5 font-display text-[10px] tracking-widest text-black">{exp.type}</span>
-                          <span className="font-mono text-xs text-neutral-600">{exp.start_date} — {exp.end_date}</span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span
+                            className={`border-2 border-black px-2 py-0.5 font-display text-[10px] tracking-widest text-black ${
+                              exp.type === 'Academic' ? 'bg-brut-violet' : 'bg-brut-cyan'
+                            }`}
+                          >
+                            {exp.type}
+                          </span>
+                          <span className="font-mono text-xs text-neutral-600 font-bold">
+                            {exp.start_date} — {exp.end_date}
+                          </span>
+                          <span className="font-mono text-xs text-neutral-500 font-bold">
+                            • {exp.location}
+                          </span>
                         </div>
                         <h4 className="font-display text-lg text-black">{exp.role}</h4>
-                        <p className="font-display text-sm text-black opacity-70">{exp.company}</p>
-                        <p className="mt-2 text-xs font-semibold text-black opacity-60 line-clamp-2">{exp.description}</p>
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <p className="font-display text-sm text-black opacity-75 font-bold">{exp.company}</p>
+                        <p className="mt-2 text-xs font-semibold text-black leading-relaxed">{exp.description}</p>
+                        <div className="mt-3 flex flex-wrap gap-1">
                           {(exp.tags || []).map((tag: string, i: number) => (
-                            <span key={i} className="border border-black bg-black px-1.5 py-0.5 font-mono text-[9px] text-white">#{tag}</span>
+                            <span key={i} className="border border-black bg-black px-2 py-0.5 font-mono text-[9px] text-white">
+                              #{tag}
+                            </span>
                           ))}
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          if (exp.id && dbConnected) {
-                            supabase.from('experiences').delete().eq('id', exp.id).then(({ error }) => {
-                              if (error) { alert('Gagal menghapus: ' + error.message); return; }
-                              setExperiences(experiences.filter((e) => e.id !== exp.id));
-                            });
-                          }
-                        }}
-                        className="brut-btn bg-brut-red text-xs text-white shrink-0"
-                      >
-                        <FaTrash />
-                      </button>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => setEditingExp(exp)}
+                          className="p-2 border-2 border-black bg-brut-yellow text-xs"
+                          title="Edit Experience"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          onClick={() => exp.id && handleDeleteExp(exp.id, exp.role)}
+                          className="p-2 border-2 border-black bg-brut-red text-xs text-white"
+                          title="Hapus Experience"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm">
-              <p className="font-mono text-xs font-bold text-neutral-700">
-                💡 To add/edit experience data, run the SQL in <code className="bg-black text-brut-lime px-1">supabase_experience_schema.sql</code> or insert directly via Supabase Dashboard &gt; Table Editor &gt; experiences.
-              </p>
-            </div>
           </div>
         )}
 
-        {/* TAB — CURRICULUM VITAE (CV) */}
+        {/* TAB 5: CURRICULUM VITAE (CV) */}
         {activeTab === 'cv' && (
           <div className="space-y-6">
             {/* Header Banner */}
@@ -1549,7 +1969,7 @@ export default function AdminPage() {
                 <div>
                   <h3 className="font-display text-lg text-black">CURRICULUM VITAE (CV) MANAGEMENT</h3>
                   <p className="text-[11px] font-bold text-neutral-700 uppercase">
-                    Upload & Kelola File CV untuk Tombol "Download CV" di Hero Section
+                    Upload & Kelola File CV untuk Tombol "Download CV" di Hero Section via Supabase Storage
                   </p>
                 </div>
               </div>
@@ -1565,14 +1985,12 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-display text-base text-black uppercase">DAFTAR FILE CV TERSIMPAN</h4>
-                <span className="font-mono text-xs font-bold text-neutral-600">
-                  Total: {cvList.length} File
-                </span>
+                <span className="font-mono text-xs font-bold text-neutral-600">Total: {cvList.length} File</span>
               </div>
 
               {cvList.length === 0 ? (
                 <div className="border-4 border-black bg-brut-paper p-8 text-center shadow-brut-sm font-bold text-neutral-600">
-                  Belum ada file CV yang diupload. Silakan upload file pertama Anda di atas.
+                  Belum ada file CV yang diupload ke Supabase Storage.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1661,28 +2079,18 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-
-            {/* SQL Guide Card */}
-            <div className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="border-2 border-black bg-brut-cyan px-2 py-0.5 font-display text-[10px] uppercase text-black font-black">
-                  SUPABASE SETUP INFO
-                </span>
-                <span className="font-display text-xs text-black uppercase">
-                  Tabel: <code className="bg-black text-brut-yellow px-1">curriculum_vitae</code> • Storage: <code className="bg-black text-brut-yellow px-1">cv_files</code>
-                </span>
-              </div>
-              <p className="font-mono text-xs text-neutral-700">
-                💡 Jalankan file SQL <code>supabase_cv_schema.sql</code> di <b>Supabase SQL Editor</b> untuk mengaktifkan tabel database & storage bucket resmi dengan batasan 10MB dan permission RLS.
-              </p>
-            </div>
           </div>
         )}
 
-        {/* TAB 4: PROFILE UPDATE */}
+        {/* TAB 6: PROFILE UPDATE */}
         {activeTab === 'profile' && (
-          <form onSubmit={handleSaveProfile} className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4">
-            <h3 className="font-display text-lg text-black border-b-4 border-black pb-3">EDIT PROFILE & HERO INFORMATION</h3>
+          <form
+            onSubmit={handleSaveProfile}
+            className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
+          >
+            <h3 className="font-display text-lg text-black border-b-4 border-black pb-3">
+              EDIT PROFILE & HERO INFORMATION (SUPABASE)
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold mb-1">Nama Lengkap</label>
@@ -1733,27 +2141,31 @@ export default function AdminPage() {
             </div>
             <div className="pt-4">
               <button type="submit" className="brut-btn bg-brut-lime text-xs">
-                <FaSave /> Update Profile Data
+                <FaSave /> Update Profile Data di Supabase
               </button>
             </div>
           </form>
         )}
 
-        {/* TAB 5: MESSAGES INBOX */}
+        {/* TAB 7: MESSAGES INBOX */}
         {activeTab === 'messages' && (
           <div className="space-y-6">
-            <div className="border-4 border-black bg-brut-yellow p-4 shadow-brut-sm">
+            <div className="border-4 border-black bg-brut-yellow p-4 shadow-brut-sm flex items-center justify-between">
               <h3 className="font-display text-lg text-black">CONTACT FORM MESSAGES INBOX</h3>
+              <span className="font-mono text-xs font-bold text-black">{messages.length} Pesan Masuk</span>
             </div>
 
             {messages.length === 0 ? (
               <div className="border-4 border-black bg-brut-paper p-8 text-center shadow-brut-sm font-bold text-neutral-600">
-                Belum ada pesan yang masuk.
+                Belum ada pesan yang masuk di Supabase database.
               </div>
             ) : (
               <div className="space-y-4">
                 {messages.map((msg) => (
-                  <div key={msg.id} className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between">
+                  <div
+                    key={msg.id}
+                    className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
+                  >
                     <div>
                       <div className="flex items-center justify-between border-b-2 border-black pb-2 mb-3">
                         <div>
@@ -1768,7 +2180,10 @@ export default function AdminPage() {
                       <p className="text-xs font-medium text-black leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                     </div>
                     <div className="pt-4 flex justify-end">
-                      <button onClick={() => handleDeleteMessage(msg.id)} className="brut-btn bg-brut-red text-xs text-white">
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="brut-btn bg-brut-red text-xs text-white"
+                      >
                         <FaTrash /> Hapus Pesan
                       </button>
                     </div>
@@ -1820,7 +2235,7 @@ export default function AdminPage() {
                   }}
                   className="brut-btn bg-brut-red text-white text-xs hover:bg-red-700"
                 >
-                  <FaTrash /> YA, HAPUS!
+                  <FaTrash /> YA, HAPUS DARI SUPABASE!
                 </button>
               </div>
             </div>

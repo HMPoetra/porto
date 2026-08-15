@@ -17,14 +17,14 @@ export async function middleware(request: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const localSession = request.cookies.get('local_admin_session')?.value;
 
-  // Fallback: If Supabase is not configured -> enforce local_admin_session cookie
+  // If Supabase credentials are not configured or placeholder
   if (
     !supabaseUrl ||
     !supabaseAnonKey ||
     supabaseUrl === 'https://placeholder.supabase.co'
   ) {
-    const localSession = request.cookies.get('local_admin_session')?.value;
     if (!isLoginPath && !localSession) {
       const loginUrl = new URL('/admin/login', request.url);
       return NextResponse.redirect(loginUrl);
@@ -54,20 +54,22 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Verify authenticated user from session cookie
+  // Verify authenticated user from Supabase session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isAuthenticated = Boolean(user || localSession);
+
   // If unauthenticated and trying to access admin dashboard -> Force redirect to /admin/login
-  if (!isLoginPath && !user) {
+  if (!isLoginPath && !isAuthenticated) {
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // If already logged in and visiting login page -> Redirect directly to /admin
-  if (isLoginPath && user) {
+  if (isLoginPath && isAuthenticated) {
     const adminUrl = new URL('/admin', request.url);
     return NextResponse.redirect(adminUrl);
   }
