@@ -554,11 +554,40 @@ const Hero = () => {
 
               {/* PDF Preview Content Body */}
               <div className="flex-1 min-h-[500px] md:min-h-[620px] bg-neutral-900 relative overflow-hidden flex flex-col">
-                <iframe
-                  src={`${activeCvUrl}#toolbar=1&navpanes=0`}
+                <object
+                  data={`${activeCvUrl}#toolbar=1&navpanes=0`}
+                  type="application/pdf"
                   className="w-full h-full min-h-[500px] md:min-h-[620px] border-0 flex-1"
-                  title="Curriculum Vitae Document Preview"
-                />
+                >
+                  <iframe
+                    src={`${activeCvUrl}#toolbar=1&navpanes=0`}
+                    className="w-full h-full min-h-[500px] md:min-h-[620px] border-0 flex-1"
+                    title="Curriculum Vitae Document Preview"
+                  >
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-white h-full gap-4">
+                      <FaFilePdf className="text-5xl text-brut-red" />
+                      <p className="font-bold text-sm text-neutral-300">
+                        Browser tidak dapat menampilkan preview PDF langsung di dalam frame.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleDownloadCV}
+                          className="brut-btn bg-brut-lime text-black font-bold py-2 px-4 text-xs"
+                        >
+                          Unduh Berkas CV
+                        </button>
+                        <a
+                          href={activeCvUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="brut-btn bg-brut-cyan text-black font-bold py-2 px-4 text-xs"
+                        >
+                          Buka di Tab Baru
+                        </a>
+                      </div>
+                    </div>
+                  </iframe>
+                </object>
               </div>
 
               {/* Footer Note */}
