@@ -25,7 +25,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   metadataBase: new URL('https://my-porto-gamma-self.vercel.app'),
   title: {
-    default: "Hapsoro Mahendra Poetra — Web Developer Portfolio",
+    default: "Hapsoro Mahendra Poetra - Portofolio",
     template: "%s | HMPoetra",
   },
   description:
@@ -83,8 +83,14 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   manifest: "/manifest.json",
 };
