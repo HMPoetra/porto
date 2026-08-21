@@ -14,21 +14,14 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaUserShield,
-  FaUserPlus,
-  FaSignInAlt,
   FaCloud,
-  FaLaptopCode,
 } from 'react-icons/fa';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
-type AuthMode = 'supabase_login' | 'supabase_signup' | 'local_mode';
-
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<AuthMode>('supabase_login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -59,11 +52,6 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (authMode === 'supabase_signup' && password !== confirmPassword) {
-      setErrorMsg('Konfirmasi password tidak cocok.');
-      return;
-    }
-
     if (password.length < 6) {
       setErrorMsg('Password minimal 6 karakter.');
       return;
@@ -72,62 +60,23 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      if (authMode === 'local_mode') {
-        // Mode Lokal Offline
-        setSuccessMsg('Mode Lokal: Berhasil login simulasi admin!');
-        document.cookie = 'local_admin_session=true; path=/; max-age=86400; SameSite=Lax';
-        localStorage.setItem('local_admin_session', 'true');
-        setTimeout(() => {
-          router.push('/admin');
-        }, 800);
-        setLoading(false);
-        return;
-      }
-
       if (!dbConfigured) {
         throw new Error('Konfigurasi Supabase tidak ditemukan di environment (.env.local).');
       }
 
-      if (authMode === 'supabase_signup') {
-        // Pendaftaran Admin Baru via Supabase Auth
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password,
-          options: {
-            data: {
-              role: 'admin',
-              full_name: 'Admin Portfolio',
-            },
-          },
-        });
+      // Login Standar Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data.session) {
-          setSuccessMsg('Akun Admin Supabase berhasil dibuat & otomatis login! Mengalihkan...');
-          setTimeout(() => {
-            router.push('/admin');
-          }, 1000);
-        } else if (data.user && !data.session) {
-          setSuccessMsg(
-            'Pendaftaran berhasil! Jika Supabase mengaktifkan konfirmasi email, silakan periksa inbox Anda atau matikan "Confirm email" di Supabase Dashboard.'
-          );
-        }
-      } else {
-        // Login Standar Supabase Auth
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          setSuccessMsg('Login Supabase berhasil! Mengalihkan ke Dashboard Admin...');
-          setTimeout(() => {
-            router.push('/admin');
-          }, 800);
-        }
+      if (data.user) {
+        setSuccessMsg('Login Supabase berhasil! Mengalihkan ke Dashboard Admin...');
+        setTimeout(() => {
+          router.push('/admin');
+        }, 800);
       }
     } catch (err: any) {
       console.error('Auth error:', err);
@@ -136,8 +85,6 @@ export default function AdminLoginPage() {
         message = 'Email atau Password Supabase salah. Pastikan akun sudah terdaftar.';
       } else if (err.message?.includes('Email not confirmed')) {
         message = 'Email belum dikonfirmasi. Periksa inbox email Anda atau nonaktifkan email confirmation di Supabase Dashboard.';
-      } else if (err.message?.includes('User already registered')) {
-        message = 'Email ini sudah terdaftar di Supabase. Silakan pilih tab "Masuk".';
       }
       setErrorMsg(message);
     } finally {
@@ -168,7 +115,7 @@ export default function AdminLoginPage() {
               <div>
                 <h1 className="font-display text-xl leading-tight text-black">ADMIN CMS DASHBOARD</h1>
                 <p className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider">
-                  Otentikasi Supabase Cloud & Local Access
+                  Otentikasi Supabase Cloud
                 </p>
               </div>
             </div>
@@ -179,57 +126,6 @@ export default function AdminLoginPage() {
             >
               <FaArrowLeft /> Home
             </Link>
-          </div>
-
-          {/* Mode Selector Tabs */}
-          <div className="grid grid-cols-3 gap-2 mb-6 border-2 border-black bg-brut-bg p-1.5 shadow-brut-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('supabase_login');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1 text-center font-display text-[11px] uppercase transition-all ${
-                authMode === 'supabase_login'
-                  ? 'bg-brut-yellow text-black border-2 border-black font-black shadow-brut-xs'
-                  : 'text-neutral-700 hover:text-black hover:bg-neutral-200'
-              }`}
-            >
-              <FaSignInAlt /> Masuk
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('supabase_signup');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1 text-center font-display text-[11px] uppercase transition-all ${
-                authMode === 'supabase_signup'
-                  ? 'bg-brut-cyan text-black border-2 border-black font-black shadow-brut-xs'
-                  : 'text-neutral-700 hover:text-black hover:bg-neutral-200'
-              }`}
-            >
-              <FaUserPlus /> Daftar Baru
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('local_mode');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1 text-center font-display text-[11px] uppercase transition-all ${
-                authMode === 'local_mode'
-                  ? 'bg-brut-lime text-black border-2 border-black font-black shadow-brut-xs'
-                  : 'text-neutral-700 hover:text-black hover:bg-neutral-200'
-              }`}
-            >
-              <FaLaptopCode /> Mode Lokal
-            </button>
           </div>
 
           {/* Connection Status Badge */}
@@ -243,7 +139,7 @@ export default function AdminLoginPage() {
                 dbConfigured ? 'bg-brut-lime text-black' : 'bg-brut-orange text-black'
               }`}
             >
-              {dbConfigured ? '✓ Supabase Cloud Terhubung' : 'Mode Lokal (Tanpa Supabase)'}
+              {dbConfigured ? '✓ Supabase Cloud Terhubung' : 'Supabase Belum Dikonfigurasi'}
             </span>
           </div>
 
@@ -290,12 +186,12 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          {/* Form Login / Signup / Local */}
+          {/* Form Login */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Field Email */}
             <div>
               <label className="block font-display text-xs uppercase mb-1 text-black">
-                {authMode === 'local_mode' ? 'Username / Email Admin' : 'Email Supabase Admin'}
+                Email Supabase Admin
               </label>
               <div className="flex border-4 border-black bg-brut-paper shadow-brut-xs focus-within:ring-2 focus-within:ring-black">
                 <div className="bg-brut-yellow border-r-4 border-black px-3.5 flex items-center justify-center text-black shrink-0">
@@ -340,39 +236,11 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Field Konfirmasi Password (Khusus Sign Up) */}
-            {authMode === 'supabase_signup' && (
-              <div>
-                <label className="block font-display text-xs uppercase mb-1 text-black">
-                  Ulangi Password
-                </label>
-                <div className="flex border-4 border-black bg-brut-paper shadow-brut-xs focus-within:ring-2 focus-within:ring-black">
-                  <div className="bg-brut-cyan border-r-4 border-black px-3.5 flex items-center justify-center text-black shrink-0">
-                    <FaLock className="text-base" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-brut-paper px-4 py-3 text-sm font-semibold text-black outline-none placeholder:font-bold placeholder:uppercase placeholder:text-neutral-400"
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className={`brut-btn w-full text-black transition-all mt-4 py-3.5 flex items-center justify-center gap-2 ${
-                authMode === 'supabase_login'
-                  ? 'bg-brut-yellow hover:bg-brut-cyan'
-                  : authMode === 'supabase_signup'
-                  ? 'bg-brut-cyan hover:bg-brut-lime'
-                  : 'bg-brut-lime hover:bg-brut-yellow'
-              }`}
+              className="brut-btn w-full text-black transition-all mt-4 py-3.5 flex items-center justify-center gap-2 bg-brut-yellow hover:bg-brut-cyan"
             >
               {loading ? (
                 <span className="flex items-center gap-2 font-mono text-sm font-bold">
@@ -394,14 +262,6 @@ export default function AdminLoginPage() {
                   </svg>
                   MEMPROSES...
                 </span>
-              ) : authMode === 'supabase_signup' ? (
-                <>
-                  <FaUserPlus /> DAFTARKAN ADMIN KE SUPABASE
-                </>
-              ) : authMode === 'local_mode' ? (
-                <>
-                  <FaLaptopCode /> MASUK MODE LOKAL (BYPASS)
-                </>
               ) : (
                 <>
                   <FaShieldAlt /> MASUK DASHBOARD (SUPABASE AUTH)
