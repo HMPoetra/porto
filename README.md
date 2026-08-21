@@ -15,7 +15,7 @@
   <h3>🚀 Personal Developer Portfolio & CMS Dashboard built with a bold Neo-Brutalist aesthetic.</h3>
 
   <p align="center">
-    <a href="https://my-porto-gamma-self.vercel.app/" target="_blank"><strong>🌐 Live Demo</strong></a> ·
+    <a href="https://porto-self-ten.vercel.app/" target="_blank"><strong>🌐 Live Demo</strong></a> ·
     <a href="https://github.com/HMPoetra/porto" target="_blank"><strong>📂 GitHub Repository</strong></a> ·
     <a href="#-fitur-utama--key-features"><strong>✨ Fitur</strong></a>
   </p>

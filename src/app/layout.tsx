@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://my-porto-gamma-self.vercel.app'),
+  metadataBase: new URL('https://porto-self-ten.vercel.app'),
   title: {
     default: "Hapsoro Mahendra Poetra - Portofolio",
     template: "%s | HMPoetra",
@@ -69,15 +69,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    url: "https://my-porto-gamma-self.vercel.app",
+    url: "https://porto-self-ten.vercel.app",
     siteName: "HMPoetra Portfolio",
     title: "Hapsoro Mahendra Poetra - Portofolio",
     description:
       "D3 Informatics Student & Fullstack Web Developer from Bandung, Indonesia. Specializing in Next.js, TypeScript, React.js, and modern digital experiences.",
     images: [
       {
-        url: "https://my-porto-gamma-self.vercel.app/og-image.png",
-        secureUrl: "https://my-porto-gamma-self.vercel.app/og-image.png",
+        url: "https://porto-self-ten.vercel.app/og-image.png",
+        secureUrl: "https://porto-self-ten.vercel.app/og-image.png",
         width: 1200,
         height: 630,
         type: "image/png",
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     title: "Hapsoro Mahendra Poetra - Portofolio",
     description:
       "D3 Informatics Student & Fullstack Web Developer from Bandung, Indonesia.",
-    images: ["https://my-porto-gamma-self.vercel.app/og-image.png"],
+    images: ["https://porto-self-ten.vercel.app/og-image.png"],
     creator: "@HMPoetra",
     site: "@HMPoetra",
   },

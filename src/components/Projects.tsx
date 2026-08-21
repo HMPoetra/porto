@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, memo, useMemo } from 'react';
 import Image from 'next/image';
@@ -44,7 +44,7 @@ const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
       image: '/projects/porto.png',
       gallery_images: ['/projects/porto.png', '/og-image.png'],
       github: 'https://github.com/HMPoetra/porto',
-      demo: 'https://my-porto-gamma-self.vercel.app/',
+      demo: 'https://porto-self-ten.vercel.app/',
       sort_order: 1,
     },
     {
@@ -95,7 +95,7 @@ const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
       image: '/projects/porto.png',
       gallery_images: ['/projects/porto.png', '/og-image.png'],
       github: 'https://github.com/HMPoetra/porto',
-      demo: 'https://my-porto-gamma-self.vercel.app/',
+      demo: 'https://porto-self-ten.vercel.app/',
       sort_order: 1,
     },
     {
