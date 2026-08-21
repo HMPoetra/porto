@@ -78,6 +78,14 @@ export interface Translations {
     exploreGithub: string;
     codeBtn: string;
     demoBtn: string;
+    detailBtn: string;
+    modalTitle: string;
+    shortDesc: string;
+    fullDesc: string;
+    gallery: string;
+    techStack: string;
+    links: string;
+    closeModal: string;
   };
   certifications: {
     title: string;
@@ -188,6 +196,14 @@ export const translations: Record<Language, Translations> = {
       exploreGithub: 'Explore All Repositories',
       codeBtn: 'Code',
       demoBtn: 'Demo',
+      detailBtn: 'Detail',
+      modalTitle: 'PROJECT SPECIFICATION & DETAIL',
+      shortDesc: 'Short Overview',
+      fullDesc: 'Comprehensive Detail & Implementation',
+      gallery: 'Project Gallery & Screenshots',
+      techStack: 'Technologies & Tags',
+      links: 'Project Resources & Links',
+      closeModal: 'Close',
     },
     certifications: {
       title: 'CERTIFIED',
@@ -296,6 +312,14 @@ export const translations: Record<Language, Translations> = {
       exploreGithub: 'Lihat Semua Repositori',
       codeBtn: 'Kode',
       demoBtn: 'Demo',
+      detailBtn: 'Detail',
+      modalTitle: 'SPESIFIKASI & DETAIL PROJEK',
+      shortDesc: 'Ringkasan Singkat',
+      fullDesc: 'Detail Lengkap & Implementasi',
+      gallery: 'Galeri & Tangkapan Layar Projek',
+      techStack: 'Teknologi & Tag',
+      links: 'Tautan & Repositori Projek',
+      closeModal: 'Tutup',
     },
     certifications: {
       title: 'SERTIFIKAT',

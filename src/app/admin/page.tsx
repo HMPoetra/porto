@@ -212,6 +212,158 @@ const ImageDropzone = ({
   );
 };
 
+const MultiImageDropzone = ({
+  values = [],
+  onChange,
+  label = 'Galeri Foto Projek (Bisa Pilih Banyak)',
+}: {
+  values: string[];
+  onChange: (urls: string[]) => void;
+  label?: string;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [manualUrl, setManualUrl] = useState('');
+
+  const handleMultipleFiles = async (files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      alert('Harap pilih berkas gambar valid (JPG, PNG, WebP, GIF)');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const uploadedUrls = await Promise.all(validFiles.map((file) => uploadImageFile(file)));
+      const newUrls = [...values, ...uploadedUrls.filter(Boolean)];
+      onChange(newUrls);
+    } catch (err) {
+      console.error('Multi upload failed:', err);
+      alert('Gagal mengunggah sebagian gambar.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemove = (indexToRemove: number) => {
+    const updated = values.filter((_, idx) => idx !== indexToRemove);
+    onChange(updated);
+  };
+
+  const handleAddManual = () => {
+    if (!manualUrl.trim()) return;
+    onChange([...values, manualUrl.trim()]);
+    setManualUrl('');
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-bold text-black">{label}</label>
+        <span className="text-[10px] font-mono font-bold bg-brut-yellow border border-black px-2 py-0.5 shadow-brut-xs">
+          {values.length} Foto Terpilih
+        </span>
+      </div>
+
+      {/* Drag & Drop Zone */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleMultipleFiles(e.dataTransfer.files);
+          }
+        }}
+        onClick={() => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.multiple = true;
+          input.onchange = (e: any) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleMultipleFiles(e.target.files);
+            }
+          };
+          input.click();
+        }}
+        className={`relative flex flex-col items-center justify-center p-5 border-4 border-dashed border-black cursor-pointer transition-all duration-150 ${
+          isDragging ? 'bg-brut-yellow shadow-brut' : 'bg-brut-paper hover:bg-amber-50 shadow-brut-xs'
+        }`}
+      >
+        {isUploading ? (
+          <div className="flex items-center gap-2 font-display text-xs text-black animate-pulse py-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+            Mengunggah foto-foto ke Supabase Storage...
+          </div>
+        ) : (
+          <div className="flex flex-col items-center text-center gap-1.5 py-1">
+            <FaCloudUploadAlt className="text-2xl text-black" />
+            <p className="font-display text-xs text-black font-bold">
+              Tarik & Lepaskan 1 atau Lebih Foto di Sini
+            </p>
+            <span className="border-2 border-black bg-brut-lime px-2.5 py-0.5 text-[10px] font-bold text-black shadow-brut-xs">
+              + Klik untuk Pilih Banyak Foto Sekaligus (Multi-upload)
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Grid of uploaded images */}
+      {values.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          {values.map((url, idx) => (
+            <div key={idx} className="relative aspect-video border-2 border-black bg-white overflow-hidden group shadow-brut-xs">
+              <img src={url} alt={`Gallery ${idx + 1}`} className="h-full w-full object-cover" />
+              <div className="absolute top-1 left-1 bg-black text-white text-[9px] font-mono px-1 py-0.2">
+                #{idx + 1}
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemove(idx);
+                }}
+                className="absolute top-1 right-1 bg-brut-red text-white p-1 border border-black text-xs hover:bg-black transition-colors cursor-pointer"
+                title="Hapus foto ini"
+              >
+                <FaTrash className="text-[10px]" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Manual URL entry */}
+      <div className="flex gap-2 pt-1">
+        <input
+          type="text"
+          value={manualUrl}
+          onChange={(e) => setManualUrl(e.target.value)}
+          placeholder="Atau masukkan URL foto tambahan manual..."
+          className="brut-input text-xs flex-1"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddManual();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleAddManual}
+          className="brut-btn bg-brut-cyan text-xs py-1 px-3 whitespace-nowrap cursor-pointer font-bold"
+        >
+          + Tambah URL
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export interface CVRecord {
   id?: string;
   title: string;
@@ -537,16 +689,25 @@ export default function AdminPage() {
         if (!error && data) {
           const mapped: Project[] = data
             .filter((p) => p && p.title)
-            .map((p) => ({
-              id: p.id,
-              title: p.title,
-              description: p.description || '',
-              image: p.image_url || '',
-              github: p.github_url || '',
-              demo: p.demo_url || '',
-              tags: p.tags || [],
-              sort_order: p.sort_order,
-            }));
+            .map((p) => {
+              const gallery = Array.isArray(p.gallery_images)
+                ? p.gallery_images
+                : typeof p.gallery_images === 'string'
+                ? (p.gallery_images as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+                : [];
+              return {
+                id: p.id,
+                title: p.title,
+                description: p.description || '',
+                detail_description: p.detail_description || '',
+                image: p.image_url || (gallery.length > 0 ? gallery[0] : ''),
+                gallery_images: gallery,
+                github: p.github_url || '',
+                demo: p.demo_url || '',
+                tags: Array.isArray(p.tags) ? p.tags : [],
+                sort_order: p.sort_order,
+              };
+            });
           const uniquePr = Array.from(new Map(mapped.map((p) => [p.title.toLowerCase().trim(), p])).values());
           setProjects(uniquePr);
           statusMap['projects'] = true;
@@ -760,14 +921,24 @@ export default function AdminPage() {
     e.preventDefault();
     if (!editingProject || !editingProject.title) return;
 
+    const gallery = Array.isArray(editingProject.gallery_images)
+      ? editingProject.gallery_images
+      : typeof editingProject.gallery_images === 'string'
+      ? (editingProject.gallery_images as string).split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    const primaryImage = editingProject.image || (gallery.length > 0 ? gallery[0] : '');
+
     const payload = {
       title: editingProject.title,
       description: editingProject.description || '',
-      image_url: editingProject.image || '',
+      detail_description: editingProject.detail_description || '',
+      image_url: primaryImage,
+      gallery_images: gallery.length > 0 ? gallery : (primaryImage ? [primaryImage] : []),
       github_url: editingProject.github || '',
       demo_url: editingProject.demo || '',
       tags: typeof editingProject.tags === 'string'
-        ? (editingProject.tags as string).split(',').map((t) => t.trim())
+        ? (editingProject.tags as string).split(',').map((t) => t.trim()).filter(Boolean)
         : editingProject.tags || [],
       sort_order: editingProject.sort_order || 0,
     };
@@ -1425,7 +1596,9 @@ export default function AdminPage() {
                   setEditingProject({
                     title: '',
                     description: '',
+                    detail_description: '',
                     image: '',
+                    gallery_images: [],
                     github: '',
                     demo: '',
                     tags: [],
@@ -1460,22 +1633,39 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1">Deskripsi Project</label>
+                    <label className="block text-xs font-bold mb-1">Deskripsi Singkat (Tampil di Kartu)</label>
                     <textarea
                       required
-                      rows={3}
+                      rows={2}
                       value={editingProject.description || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
                       className="brut-input resize-none"
-                      placeholder="Deskripsi singkat mengenai fitur dan tujuan proyek..."
+                      placeholder="Deskripsi singkat untuk ringkasan di kartu portofolio..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Detail Projek Lengkap (Tampil di Pop-up Modal)</label>
+                    <textarea
+                      rows={5}
+                      value={editingProject.detail_description || ''}
+                      onChange={(e) => setEditingProject({ ...editingProject, detail_description: e.target.value })}
+                      className="brut-input"
+                      placeholder="Jelaskan spesifikasi teknis, arsitektur, tantangan yang diselesaikan, dan fitur-fitur lengkap proyek ini..."
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <ImageDropzone
-                        label="Gambar Thumbnail Project (Drag & Drop / Upload / Link)"
+                        label="Gambar Thumbnail Utama (Drag & Drop / Upload / Link)"
                         value={editingProject.image || ''}
                         onChange={(url) => setEditingProject({ ...editingProject, image: url })}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <MultiImageDropzone
+                        label="Galeri Foto Projek Tambahan (Bisa Upload Banyak Foto)"
+                        values={editingProject.gallery_images || []}
+                        onChange={(urls) => setEditingProject({ ...editingProject, gallery_images: urls })}
                       />
                     </div>
                     <div>
@@ -1531,56 +1721,74 @@ export default function AdminPage() {
 
             {/* List Projects */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map((project, index) => (
-                <div
-                  key={project.id || index}
-                  className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Thumbnail Image Preview */}
-                    <div className="relative mb-4 flex aspect-video w-full items-center justify-center overflow-hidden border-2 border-black bg-brut-paper">
-                      {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
-                        <img src={project.image} alt={project.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <div
-                          className="flex h-full w-full flex-col items-center justify-center text-center p-4"
-                          style={{
-                            backgroundImage: 'repeating-linear-gradient(45deg, #000 0 6px, transparent 6px 18px)',
-                          }}
-                        >
-                          <span className="border-2 border-black bg-brut-paper px-3 py-1 font-display text-xs text-black shadow-brut-xs">
-                            No Image / Coming Soon
-                          </span>
-                        </div>
-                      )}
-                    </div>
+              {projects.map((project, index) => {
+                const galleryCount = (project.gallery_images && project.gallery_images.length > 0)
+                  ? project.gallery_images.length
+                  : project.image ? 1 : 0;
 
-                    <h4 className="font-display text-lg text-black mb-2">{project.title}</h4>
-                    <p className="text-xs font-semibold text-black mb-3">{project.description}</p>
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {project.tags.map((t, i) => (
-                        <span key={i} className="border border-black bg-black text-white px-2 py-0.5 text-[9px] font-mono">
-                          #{t}
-                        </span>
-                      ))}
+                return (
+                  <div
+                    key={project.id || index}
+                    className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Thumbnail Image Preview */}
+                      <div className="relative mb-4 flex aspect-video w-full items-center justify-center overflow-hidden border-2 border-black bg-brut-paper">
+                        {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
+                          <>
+                            <img src={project.image} alt={project.title} className="h-full w-full object-cover" />
+                            {galleryCount > 1 && (
+                              <span className="absolute top-2 right-2 border border-black bg-brut-yellow px-2 py-0.5 text-[10px] font-mono font-bold">
+                                {galleryCount} Foto
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <div
+                            className="flex h-full w-full flex-col items-center justify-center text-center p-4"
+                            style={{
+                              backgroundImage: 'repeating-linear-gradient(45deg, #000 0 6px, transparent 6px 18px)',
+                            }}
+                          >
+                            <span className="border-2 border-black bg-brut-paper px-3 py-1 font-display text-xs text-black shadow-brut-xs">
+                              No Image / Coming Soon
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <h4 className="font-display text-lg text-black mb-2">{project.title}</h4>
+                      <p className="text-xs font-semibold text-black mb-2">{project.description}</p>
+                      {project.detail_description && (
+                        <p className="text-[11px] text-neutral-600 line-clamp-2 mb-3 bg-neutral-100 p-2 border border-black font-mono">
+                          ℹ️ {project.detail_description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {project.tags.map((t, i) => (
+                          <span key={i} className="border border-black bg-black text-white px-2 py-0.5 text-[9px] font-mono">
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-3 border-t-2 border-black">
+                      <button
+                        onClick={() => setEditingProject(project)}
+                        className="flex-1 brut-btn bg-brut-yellow text-xs"
+                      >
+                        <FaEdit /> Edit
+                      </button>
+                      <button
+                        onClick={() => project.id && handleDeleteProject(project.id, project.title)}
+                        className="flex-1 brut-btn bg-brut-red text-xs text-white"
+                      >
+                        <FaTrash /> Delete
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-3 pt-3 border-t-2 border-black">
-                    <button
-                      onClick={() => setEditingProject(project)}
-                      className="flex-1 brut-btn bg-brut-yellow text-xs"
-                    >
-                      <FaEdit /> Edit
-                    </button>
-                    <button
-                      onClick={() => project.id && handleDeleteProject(project.id, project.title)}
-                      className="flex-1 brut-btn bg-brut-red text-xs text-white"
-                    >
-                      <FaTrash /> Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
