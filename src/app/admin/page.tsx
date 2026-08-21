@@ -2392,14 +2392,29 @@ export default function AdminPage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold mb-1">Deskripsi Pengalaman</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold">Deskripsi Pengalaman</label>
+                      {editingExp.type === 'Academic' ? (
+                        <span className="font-mono text-[10px] text-neutral-600 font-bold bg-neutral-200 px-2 py-0.5 border border-black shadow-brut-xs">
+                          OPSIONAL (Tidak wajib diisi)
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[10px] text-red-600 font-bold">
+                          * Wajib diisi
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       rows={3}
-                      required
+                      required={editingExp.type !== 'Academic'}
                       value={editingExp.description || ''}
                       onChange={(e) => setEditingExp({ ...editingExp, description: e.target.value })}
                       className="brut-input resize-none"
-                      placeholder="Jelaskan peran, tanggung jawab, dan pencapaian..."
+                      placeholder={
+                        editingExp.type === 'Academic'
+                          ? 'Opsional: Jelaskan fokus studi atau deskripsi proyek jika ada...'
+                          : 'Jelaskan peran, tanggung jawab, dan pencapaian...'
+                      }
                     />
                   </div>
 
@@ -2462,7 +2477,9 @@ export default function AdminPage() {
                         </div>
                         <h4 className="font-display text-lg text-black">{exp.role}</h4>
                         <p className="font-display text-sm text-black opacity-75 font-bold">{exp.company}</p>
-                        <p className="mt-2 text-xs font-semibold text-black leading-relaxed">{exp.description}</p>
+                        {exp.description && (
+                          <p className="mt-2 text-xs font-semibold text-black leading-relaxed">{exp.description}</p>
+                        )}
                         <div className="mt-3 flex flex-wrap gap-1">
                           {(exp.tags || []).map((tag: string, i: number) => (
                             <span key={i} className="border border-black bg-black px-2 py-0.5 font-mono text-[9px] text-white">
