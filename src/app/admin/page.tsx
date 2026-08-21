@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -39,6 +39,12 @@ import {
   FaSyncAlt,
   FaBriefcase,
   FaUniversity,
+  FaEye,
+  FaEyeSlash,
+  FaArrowUp,
+  FaArrowDown,
+  FaSortAmountDown,
+  FaClock,
 } from 'react-icons/fa';
 import {
   SiTypescript,
@@ -640,6 +646,7 @@ export default function AdminPage() {
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [editingCert, setEditingCert] = useState<Partial<Certification> | null>(null);
   const [editingExp, setEditingExp] = useState<Partial<ExperienceRecord> | null>(null);
+  const [projectSortOrder, setProjectSortOrder] = useState<'custom' | 'newest' | 'oldest' | 'title'>('custom');
 
   // Custom Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -917,6 +924,18 @@ export default function AdminPage() {
   };
 
   // --- PROJECTS CRUD ---
+  const handleStartEditProject = (projectToEdit: Partial<Project>) => {
+    setEditingProject(projectToEdit as any);
+    setTimeout(() => {
+      const formEl = document.getElementById('project-form-section');
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 60);
+  };
+
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProject || !editingProject.title) return;
@@ -963,6 +982,91 @@ export default function AdminPage() {
       showToast(err.message || 'Gagal menyimpan project', 'error');
     }
   };
+
+  // --- PROJECT VISIBILITY & SORTING HELPERS ---
+  const handleToggleProjectVisibility = async (project: Project) => {
+    const newVisibility = project.is_visible === false ? true : false;
+    try {
+      if (dbConnected && project.id) {
+        const { error } = await supabase
+          .from('projects')
+          .update({ is_visible: newVisibility })
+          .eq('id', project.id);
+        if (error) throw error;
+        showToast(
+          newVisibility
+            ? `Project "${project.title}" sekarang DITAMPILKAN di portofolio publik!`
+            : `Project "${project.title}" DISEMBUNYIKAN dari portofolio publik.`
+        );
+      } else {
+        showToast(`Visibilitas project "${project.title}" diubah (mode lokal)`);
+      }
+      setProjects((prev) =>
+        prev.map((p) => (p.id === project.id ? { ...p, is_visible: newVisibility } : p))
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah visibilitas project', 'error');
+    }
+  };
+
+  const handleMoveProjectOrder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sortedProjects.length) return;
+
+    const currentProj = sortedProjects[index];
+    const targetProj = sortedProjects[targetIndex];
+
+    const currentOrder = currentProj.sort_order ?? index + 1;
+    const targetOrder = targetProj.sort_order ?? targetIndex + 1;
+
+    let newCurrentOrder = targetOrder;
+    let newTargetOrder = currentOrder;
+
+    if (newCurrentOrder === newTargetOrder) {
+      newCurrentOrder = direction === 'up' ? targetOrder - 1 : targetOrder + 1;
+    }
+
+    try {
+      if (dbConnected && currentProj.id && targetProj.id) {
+        await supabase.from('projects').update({ sort_order: newCurrentOrder }).eq('id', currentProj.id);
+        await supabase.from('projects').update({ sort_order: newTargetOrder }).eq('id', targetProj.id);
+        showToast('Urutan project berhasil diperbarui!');
+      }
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === currentProj.id) return { ...p, sort_order: newCurrentOrder };
+          if (p.id === targetProj.id) return { ...p, sort_order: newTargetOrder };
+          return p;
+        })
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah urutan project', 'error');
+    }
+  };
+
+  const sortedProjects = useMemo(() => {
+    const list = [...projects];
+    if (projectSortOrder === 'newest') {
+      return list.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeA && timeB) return timeB - timeA;
+        return (b.sort_order ?? 0) - (a.sort_order ?? 0);
+      });
+    }
+    if (projectSortOrder === 'oldest') {
+      return list.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeA && timeB) return timeA - timeB;
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      });
+    }
+    if (projectSortOrder === 'title') {
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [projects, projectSortOrder]);
 
   const handleDeleteProject = (id: string, title?: string) => {
     askConfirmation(
@@ -1588,12 +1692,20 @@ export default function AdminPage() {
 
         {/* TAB 2: PROJECTS CRUD */}
         {activeTab === 'projects' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-4 border-black bg-brut-cyan p-4 shadow-brut-sm">
-              <h3 className="font-display text-lg text-black">PROJECTS MANAGEMENT (SUPABASE)</h3>
+          <div className="space-y-8">
+            <div
+              id="project-form-section"
+              className="flex items-center justify-between border-4 border-black bg-brut-cyan p-4 md:p-5 shadow-brut"
+            >
+              <div>
+                <h3 className="font-display text-lg md:text-xl text-black">PROJECTS MANAGEMENT (SUPABASE)</h3>
+                <p className="font-mono text-xs font-bold text-neutral-800">
+                  Kelola showcase portofolio, detail lengkap, dan galeri multi-foto
+                </p>
+              </div>
               <button
                 onClick={() =>
-                  setEditingProject({
+                  handleStartEditProject({
                     title: '',
                     description: '',
                     detail_description: '',
@@ -1605,71 +1717,123 @@ export default function AdminPage() {
                     sort_order: projects.length + 1,
                   })
                 }
-                className="brut-btn bg-brut-yellow text-xs"
+                className="brut-btn bg-brut-yellow text-xs py-2 px-4 shadow-brut-xs cursor-pointer font-bold flex items-center gap-2"
               >
-                <FaPlus /> Add New Project
+                <FaPlus /> Tambah Project Baru
               </button>
             </div>
 
-            {/* Form Edit Project */}
+            {tableStatus['projects'] === false && (               <div className="border-4 border-black bg-brut-yellow p-4 shadow-brut">                 <div className="flex items-start gap-3">                   <div className="bg-black text-brut-yellow p-2 border-2 border-black shrink-0">                     <FaExclamationTriangle className="text-lg" />                   </div>                   <div className="flex-1">                     <span className="font-display text-[10px] bg-black text-brut-yellow px-2 py-0.5 tracking-wider font-bold">                       DATABASE PERMISSION / TABLE NOTICE                     </span>                     <h4 className="font-display text-sm text-black mt-1 uppercase font-black">                       Tabel Projects di Supabase Butuh Izin Akses (RLS)                     </h4>                     <p className="font-bold text-xs text-black mt-1 leading-snug">                       Jalankan skrip SQL <code className="bg-black text-brut-yellow px-1 py-0.5 font-mono">supabase_fix_projects.sql</code> di <b>Supabase SQL Editor</b> untuk mengaktifkan izin Read & Write agar project tersambung ke database.                     </p>                   </div>                 </div>               </div>             )}
+
+            {/* Form Edit Project (ENLARGED & SPACIOUS) */}
             {editingProject && (
               <form
                 onSubmit={handleSaveProject}
-                className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
+                className="border-4 border-black bg-brut-paper p-6 md:p-8 shadow-brut-xl space-y-6"
               >
-                <h4 className="font-display text-md text-black border-b-2 border-black pb-2">
-                  {editingProject.id ? 'Edit Project' : 'Tambah Project Baru'}
-                </h4>
-                <div className="space-y-3">
+                {/* Form Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b-4 border-black pb-4 bg-brut-yellow -mx-6 md:-mx-8 -mt-6 md:-mt-8 p-4 md:p-6">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-black text-brut-yellow p-2 border-2 border-black font-display text-base">
+                      {editingProject.id ? '✏️' : '🚀'}
+                    </span>
+                    <div>
+                      <h4 className="font-display text-lg md:text-2xl text-black uppercase leading-tight">
+                        {editingProject.id ? `EDIT PROJEK: ${editingProject.title || ''}` : 'TAMBAH PROJEK BARU'}
+                      </h4>
+                      <p className="font-mono text-xs font-bold text-neutral-700">
+                        {editingProject.id ? 'Perbarui data spesifikasi dan galeri foto projek' : 'Isi data lengkap untuk mempublikasikan karya baru'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingProject(null)}
+                    className="border-2 border-black bg-brut-red text-white px-3 py-1 text-xs font-display uppercase shadow-brut-xs hover:bg-black transition-colors cursor-pointer"
+                  >
+                    ✕ Batal
+                  </button>
+                </div>
+
+                <div className="space-y-5 pt-2">
+                  {/* Field 1: Judul Project */}
                   <div>
-                    <label className="block text-xs font-bold mb-1">Judul Project</label>
+                    <label className="block font-display text-xs md:text-sm uppercase mb-1.5 text-black font-bold">
+                      1. Judul Project <span className="text-red-600">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       value={editingProject.title || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, title: e.target.value })}
-                      className="brut-input"
-                      placeholder="My Awesome Project"
+                      className="brut-input text-sm md:text-base font-bold py-3 px-4"
+                      placeholder="Contoh: MicroVest Platform, Website Portofolio, Toko Sepatu..."
                     />
                   </div>
+
+                  {/* Field 2: Deskripsi Singkat */}
                   <div>
-                    <label className="block text-xs font-bold mb-1">Deskripsi Singkat (Tampil di Kartu)</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-display text-xs md:text-sm uppercase text-black font-bold">
+                        2. Deskripsi Singkat (Tampil di Kartu Depan) <span className="text-red-600">*</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-neutral-600 font-bold">
+                        Maks. 2-3 baris ringkas
+                      </span>
+                    </div>
                     <textarea
                       required
-                      rows={2}
+                      rows={3}
                       value={editingProject.description || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
-                      className="brut-input resize-none"
-                      placeholder="Deskripsi singkat untuk ringkasan di kartu portofolio..."
+                      className="brut-input text-xs md:text-sm font-semibold leading-relaxed"
+                      placeholder="Ringkasan singkat mengenai tujuan utama dan fungsionalitas proyek untuk kartu portofolio..."
                     />
                   </div>
+
+                  {/* Field 3: Detail Projek Lengkap */}
                   <div>
-                    <label className="block text-xs font-bold mb-1">Detail Projek Lengkap (Tampil di Pop-up Modal)</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-display text-xs md:text-sm uppercase text-black font-bold">
+                        3. Detail Projek Lengkap (Tampil di Pop-Up Modal Detail)
+                      </label>
+                      <span className="text-[10px] font-mono bg-brut-pink border border-black px-2 py-0.5 font-bold">
+                        Mendukung Paragraf & Penjelasan Lengkap
+                      </span>
+                    </div>
                     <textarea
-                      rows={5}
+                      rows={8}
                       value={editingProject.detail_description || ''}
                       onChange={(e) => setEditingProject({ ...editingProject, detail_description: e.target.value })}
-                      className="brut-input"
-                      placeholder="Jelaskan spesifikasi teknis, arsitektur, tantangan yang diselesaikan, dan fitur-fitur lengkap proyek ini..."
+                      className="brut-input text-xs md:text-sm font-medium leading-relaxed"
+                      placeholder="Tuliskan spesifikasi teknis mendalam, arsitektur yang digunakan, fitur-fitur unggulan, tantangan teknis, serta solusi implementasi yang diterapkan pada proyek ini..."
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
+
+                  {/* Field 4 & 5: Upload Foto & Galeri */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-6 border-4 border-black bg-neutral-50 shadow-brut-sm">
+                    <div>
                       <ImageDropzone
-                        label="Gambar Thumbnail Utama (Drag & Drop / Upload / Link)"
+                        label="Gambar Thumbnail Utama (Cover Project)"
                         value={editingProject.image || ''}
                         onChange={(url) => setEditingProject({ ...editingProject, image: url })}
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <MultiImageDropzone
-                        label="Galeri Foto Projek Tambahan (Bisa Upload Banyak Foto)"
+                        label="Galeri Foto Tambahan (Bisa Multi-Upload)"
                         values={editingProject.gallery_images || []}
                         onChange={(urls) => setEditingProject({ ...editingProject, gallery_images: urls })}
                       />
                     </div>
+                  </div>
+
+                  {/* Field 6: Links & Meta */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <div>
-                      <label className="block text-xs font-bold mb-1">Tags (Pisahkan dengan koma)</label>
+                      <label className="block font-display text-xs uppercase mb-1 text-black font-bold">
+                        Tags (Pisahkan koma)
+                      </label>
                       <input
                         type="text"
                         value={
@@ -1678,50 +1842,153 @@ export default function AdminPage() {
                             : editingProject.tags || ''
                         }
                         onChange={(e) => setEditingProject({ ...editingProject, tags: e.target.value as any })}
-                        className="brut-input"
-                        placeholder="Next.js, TypeScript, Tailwind"
+                        className="brut-input text-xs"
+                        placeholder="Next.js, TypeScript, Supabase"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold mb-1">URL GitHub Repository</label>
+                      <label className="block font-display text-xs uppercase mb-1 text-black font-bold">
+                        URL GitHub Repository
+                      </label>
                       <input
                         type="text"
                         value={editingProject.github || ''}
                         onChange={(e) => setEditingProject({ ...editingProject, github: e.target.value })}
-                        className="brut-input"
+                        className="brut-input text-xs"
                         placeholder="https://github.com/HMPoetra/..."
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold mb-1">URL Live Demo</label>
+                    <div>
+                      <label className="block font-display text-xs uppercase mb-1 text-black font-bold">
+                        URL Live Demo
+                      </label>
                       <input
                         type="text"
                         value={editingProject.demo || ''}
                         onChange={(e) => setEditingProject({ ...editingProject, demo: e.target.value })}
-                        className="brut-input"
-                        placeholder="https://my-app.vercel.app"
+                        className="brut-input text-xs"
+                        placeholder="https://my-project.vercel.app"
                       />
                     </div>
                   </div>
+
+                  {/* Field 7: Urutan Tampil & Status Visibilitas Publik */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border-4 border-black bg-neutral-100 shadow-brut-xs">
+                    <div>
+                      <label className="block font-display text-xs uppercase mb-1 text-black font-bold">
+                        Urutan Tampil (Sort Order)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingProject.sort_order ?? 1}
+                        onChange={(e) => setEditingProject({ ...editingProject, sort_order: parseInt(e.target.value) || 0 })}
+                        className="brut-input text-xs bg-white font-bold"
+                        placeholder="1, 2, 3..."
+                      />
+                      <span className="text-[10px] text-neutral-600 font-mono">
+                        Angka lebih kecil tampil lebih awal pada mode custom
+                      </span>
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <label className="flex items-center gap-3 cursor-pointer p-2.5 border-2 border-black bg-white shadow-brut-xs hover:bg-neutral-50">
+                        <input
+                          type="checkbox"
+                          checked={editingProject.is_visible !== false}
+                          onChange={(e) => setEditingProject({ ...editingProject, is_visible: e.target.checked })}
+                          className="w-5 h-5 accent-black cursor-pointer"
+                        />
+                        <div>
+                          <span className="font-display text-xs font-bold text-black uppercase block">
+                            Tampilkan di Portofolio Publik
+                          </span>
+                          <span className="text-[10px] font-mono text-neutral-600">
+                            {editingProject.is_visible !== false ? '✅ Status: VISIBLE (Tampil di Website)' : '🚫 Status: DISEMBUNYIKAN (Draft/Hidden)'}
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" className="brut-btn bg-brut-lime text-xs">
-                    <FaSave /> Simpan Project
+
+                {/* Form Buttons */}
+                <div className="flex flex-wrap gap-4 pt-4 border-t-4 border-black">
+                  <button
+                    type="submit"
+                    className="brut-btn bg-brut-lime hover:bg-brut-yellow text-black text-sm py-3.5 px-6 flex items-center gap-2 font-bold shadow-brut cursor-pointer"
+                  >
+                    <FaSave className="text-base" /> SIMPAN PERUBAHAN PROJECT
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingProject(null)}
-                    className="brut-btn bg-brut-red text-xs text-white"
+                    className="brut-btn bg-brut-red hover:bg-black text-white text-sm py-3.5 px-6 font-bold shadow-brut cursor-pointer"
                   >
-                    Batal
+                    ✕ BATAL
                   </button>
                 </div>
               </form>
             )}
 
+            {/* Projects Control & Sort Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-4 border-black bg-white shadow-brut-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-display text-xs uppercase font-bold text-black flex items-center gap-1.5">
+                  <FaSortAmountDown /> Urutkan Berdasarkan:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setProjectSortOrder('custom')}
+                    className={`border-2 border-black px-2.5 py-1 text-xs font-mono font-bold transition-colors cursor-pointer ${
+                      projectSortOrder === 'custom' ? 'bg-black text-white shadow-brut-xs' : 'bg-brut-paper text-black hover:bg-neutral-100'
+                    }`}
+                  >
+                    ⚡ Urutan Kustom (#1, #2..)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectSortOrder('newest')}
+                    className={`border-2 border-black px-2.5 py-1 text-xs font-mono font-bold transition-colors cursor-pointer ${
+                      projectSortOrder === 'newest' ? 'bg-black text-white shadow-brut-xs' : 'bg-brut-paper text-black hover:bg-neutral-100'
+                    }`}
+                  >
+                    🕒 Terbaru
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectSortOrder('oldest')}
+                    className={`border-2 border-black px-2.5 py-1 text-xs font-mono font-bold transition-colors cursor-pointer ${
+                      projectSortOrder === 'oldest' ? 'bg-black text-white shadow-brut-xs' : 'bg-brut-paper text-black hover:bg-neutral-100'
+                    }`}
+                  >
+                    ⏳ Terlama
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectSortOrder('title')}
+                    className={`border-2 border-black px-2.5 py-1 text-xs font-mono font-bold transition-colors cursor-pointer ${
+                      projectSortOrder === 'title' ? 'bg-black text-white shadow-brut-xs' : 'bg-brut-paper text-black hover:bg-neutral-100'
+                    }`}
+                  >
+                    🔤 Nama (A-Z)
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Counters */}
+              <div className="flex items-center gap-2 text-xs font-mono font-bold">
+                <span className="bg-brut-lime border-2 border-black px-2 py-0.5">
+                  Tampil: {projects.filter((p) => p.is_visible !== false).length}
+                </span>
+                <span className="bg-neutral-200 border-2 border-black px-2 py-0.5 text-neutral-700">
+                  Hidden: {projects.filter((p) => p.is_visible === false).length}
+                </span>
+              </div>
+            </div>
+
             {/* List Projects */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map((project, index) => {
+              {sortedProjects.map((project, index) => {
                 const galleryCount = (project.gallery_images && project.gallery_images.length > 0)
                   ? project.gallery_images.length
                   : project.image ? 1 : 0;
@@ -1732,6 +1999,48 @@ export default function AdminPage() {
                     className="border-4 border-black bg-brut-paper p-5 shadow-brut-sm flex flex-col justify-between"
                   >
                     <div>
+                      {/* Card Status & Reorder Bar */}
+                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b-2 border-black">
+                        <div className="flex items-center gap-2">
+                          <span className="border-2 border-black bg-black text-white px-2 py-0.5 text-[10px] font-mono font-bold">
+                            #{project.sort_order ?? index + 1}
+                          </span>
+                          {project.is_visible !== false ? (
+                            <span className="border-2 border-black bg-brut-lime text-black px-2 py-0.5 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <FaEye className="text-xs" /> PUBLIK
+                            </span>
+                          ) : (
+                            <span className="border-2 border-black bg-neutral-300 text-neutral-800 px-2 py-0.5 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <FaEyeSlash className="text-xs" /> DISEMBUNYIKAN
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Reorder Buttons (Active in custom sort mode) */}
+                        {projectSortOrder === 'custom' && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleMoveProjectOrder(index, 'up')}
+                              className="p-1 border border-black bg-white hover:bg-brut-yellow disabled:opacity-30 text-[10px] cursor-pointer"
+                              title="Geser Naik"
+                            >
+                              <FaArrowUp />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === sortedProjects.length - 1}
+                              onClick={() => handleMoveProjectOrder(index, 'down')}
+                              className="p-1 border border-black bg-white hover:bg-brut-yellow disabled:opacity-30 text-[10px] cursor-pointer"
+                              title="Geser Turun"
+                            >
+                              <FaArrowDown />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Thumbnail Image Preview */}
                       <div className="relative mb-4 flex aspect-video w-full items-center justify-center overflow-hidden border-2 border-black bg-brut-paper">
                         {project.image && (project.image.includes('/') || project.image.includes('.')) ? (
@@ -1760,7 +2069,7 @@ export default function AdminPage() {
                       <h4 className="font-display text-lg text-black mb-2">{project.title}</h4>
                       <p className="text-xs font-semibold text-black mb-2">{project.description}</p>
                       {project.detail_description && (
-                        <p className="text-[11px] text-neutral-600 line-clamp-2 mb-3 bg-neutral-100 p-2 border border-black font-mono">
+                        <p className="text-[11px] text-neutral-600 whitespace-pre-line leading-relaxed mb-3 bg-neutral-100 p-2 border border-black font-mono">
                           ℹ️ {project.detail_description}
                         </p>
                       )}
@@ -1772,18 +2081,39 @@ export default function AdminPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="flex gap-3 pt-3 border-t-2 border-black">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t-2 border-black">
                       <button
-                        onClick={() => setEditingProject(project)}
-                        className="flex-1 brut-btn bg-brut-yellow text-xs"
+                        type="button"
+                        onClick={() => handleToggleProjectVisibility(project)}
+                        className={`flex-1 p-2 border-2 border-black font-display text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-brut-xs ${
+                          project.is_visible !== false
+                            ? 'bg-neutral-200 hover:bg-neutral-300 text-neutral-800'
+                            : 'bg-brut-lime hover:bg-emerald-400 text-black'
+                        }`}
+                        title={project.is_visible !== false ? 'Klik untuk sembunyikan dari pengunjung' : 'Klik untuk tampilkan ke pengunjung'}
+                      >
+                        {project.is_visible !== false ? (
+                          <>
+                            <FaEyeSlash className="text-xs" /> Sembunyikan
+                          </>
+                        ) : (
+                          <>
+                            <FaEye className="text-xs" /> Tampilkan
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleStartEditProject(project)}
+                        className="flex-1 brut-btn bg-brut-yellow text-xs font-bold py-2"
                       >
                         <FaEdit /> Edit
                       </button>
                       <button
                         onClick={() => project.id && handleDeleteProject(project.id, project.title)}
-                        className="flex-1 brut-btn bg-brut-red text-xs text-white"
+                        className="p-2 brut-btn bg-brut-red text-xs text-white font-bold"
+                        title="Hapus Project"
                       >
-                        <FaTrash /> Delete
+                        <FaTrash />
                       </button>
                     </div>
                   </div>

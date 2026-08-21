@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, memo, useMemo } from 'react';
 import Image from 'next/image';
@@ -28,6 +28,8 @@ export interface Project {
   github?: string;
   demo?: string;
   sort_order?: number;
+  is_visible?: boolean;
+  created_at?: string;
 }
 
 const DEFAULT_PROJECTS_DATA: Record<'en' | 'id', Project[]> = {
@@ -348,6 +350,8 @@ const Projects = () => {
                 ? (p.tags as string).split(',').map((s: string) => s.trim()).filter(Boolean)
                 : [],
               sort_order: p.sort_order ?? 0,
+              is_visible: p.is_visible !== false,
+              created_at: p.created_at || '',
             };
           });
           setSupabaseProjects(mapped);
@@ -375,7 +379,7 @@ const Projects = () => {
     return Array.from(
       new Map(
         currentList
-          .filter((p) => p && p.title)
+          .filter((p) => p && p.title && p.is_visible !== false)
           .map((p) => [p.title.toLowerCase().trim(), p])
       ).values()
     );

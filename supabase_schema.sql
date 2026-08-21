@@ -1,4 +1,4 @@
--- ==============================================================================
+﻿-- ==============================================================================
 -- SUPABASE FULL SCHEMA: PORTOFOLIO & CMS DASHBOARD (HMPoetra)
 -- Jalankan skrip ini di: Supabase Dashboard > SQL Editor > New Query > RUN
 -- 100% Bebas Error 42P10 & Aman dijalankan berulang kali (Idempotent)
@@ -39,17 +39,18 @@ CREATE TABLE IF NOT EXISTS public.skills (
 -- 3. TABEL PROJECTS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    detail_description TEXT NOT NULL DEFAULT '',
-    image_url TEXT DEFAULT '',
-    gallery_images TEXT[] DEFAULT '{}',
-    github_url TEXT DEFAULT '',
-    demo_url TEXT DEFAULT '',
-    tags TEXT[] DEFAULT '{}',
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now()
+  id uuid not null default gen_random_uuid (),
+  title text not null,
+  description text not null,
+  image_url text null default ''::text,
+  github_url text null default ''::text,
+  demo_url text null default ''::text,
+  tags text[] null default '{}'::text[],
+  sort_order integer null default 0,
+  created_at timestamp with time zone null default now(),
+  detail_description text null default ''::text,
+  gallery_images text[] null default '{}'::text[],
+  constraint projects_pkey primary key (id)
 );
 
 -- ==============================================================================
