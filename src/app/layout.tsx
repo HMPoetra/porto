@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo_Black, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -22,6 +22,12 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#FFD600",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://my-porto-gamma-self.vercel.app'),
   title: {
@@ -29,7 +35,8 @@ export const metadata: Metadata = {
     template: "%s | HMPoetra",
   },
   description:
-    "Personal portfolio of Hapsoro Mahendra Poetra — a D3 Informatics student & web developer from Bandung, Indonesia. Specializing in Next.js, TypeScript, React.js, and full-stack development.",
+    "Personal portfolio of Hapsoro Mahendra Poetra — D3 Informatics student & Fullstack Web Developer from Bandung, Indonesia. Specializing in Next.js, TypeScript, React.js, and Supabase.",
+  applicationName: "HMPoetra Portfolio",
   keywords: [
     "Hapsoro Mahendra Poetra",
     "HMPoetra",
@@ -47,6 +54,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Hapsoro Mahendra Poetra", url: "https://github.com/HMPoetra" }],
   creator: "Hapsoro Mahendra Poetra",
+  publisher: "Hapsoro Mahendra Poetra",
   robots: {
     index: true,
     follow: true,
@@ -62,25 +70,29 @@ export const metadata: Metadata = {
     type: "website",
     locale: "id_ID",
     url: "https://my-porto-gamma-self.vercel.app",
-    title: "Hapsoro Mahendra Poetra — Web Developer Portfolio",
-    description:
-      "D3 Informatics student & web developer from Bandung, Indonesia. Building websites, apps & digital experiences.",
     siteName: "HMPoetra Portfolio",
+    title: "Hapsoro Mahendra Poetra - Portofolio",
+    description:
+      "D3 Informatics Student & Fullstack Web Developer from Bandung, Indonesia. Specializing in Next.js, TypeScript, React.js, and modern digital experiences.",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://my-porto-gamma-self.vercel.app/og-image.png",
+        secureUrl: "https://my-porto-gamma-self.vercel.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "HMPoetra — Web Developer Portfolio",
+        type: "image/png",
+        alt: "Hapsoro Mahendra Poetra — Web Developer Portfolio",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hapsoro Mahendra Poetra — Web Developer Portfolio",
+    title: "Hapsoro Mahendra Poetra - Portofolio",
     description:
-      "D3 Informatics student & web developer from Bandung, Indonesia.",
-    images: ["/og-image.png"],
+      "D3 Informatics Student & Fullstack Web Developer from Bandung, Indonesia.",
+    images: ["https://my-porto-gamma-self.vercel.app/og-image.png"],
+    creator: "@HMPoetra",
+    site: "@HMPoetra",
   },
   icons: {
     icon: [
