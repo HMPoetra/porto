@@ -861,7 +861,24 @@ export default function AdminPage() {
     router.replace('/admin/login');
   };
 
+  // --- SCROLL TO FORM HELPER ---
+  const scrollToFormSection = (formId: string) => {
+    setTimeout(() => {
+      const formEl = document.getElementById(formId);
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 80);
+  };
+
   // --- SKILLS CRUD ---
+  const handleStartEditSkill = (skillToEdit: Partial<Skill>) => {
+    setEditingSkill(skillToEdit);
+    scrollToFormSection('skill-form-section');
+  };
+
   const handleSaveSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSkill || !editingSkill.name) return;
@@ -926,14 +943,7 @@ export default function AdminPage() {
   // --- PROJECTS CRUD ---
   const handleStartEditProject = (projectToEdit: Partial<Project>) => {
     setEditingProject(projectToEdit as any);
-    setTimeout(() => {
-      const formEl = document.getElementById('project-form-section');
-      if (formEl) {
-        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 60);
+    scrollToFormSection('project-form-section');
   };
 
   const handleSaveProject = async (e: React.FormEvent) => {
@@ -1088,6 +1098,11 @@ export default function AdminPage() {
   };
 
   // --- CERTIFICATIONS CRUD ---
+  const handleStartEditCert = (certToEdit: Partial<Certification>) => {
+    setEditingCert(certToEdit);
+    scrollToFormSection('cert-form-section');
+  };
+
   const handleSaveCert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCert || !editingCert.title) return;
@@ -1146,6 +1161,11 @@ export default function AdminPage() {
   };
 
   // --- EXPERIENCES CRUD ---
+  const handleStartEditExp = (expToEdit: Partial<ExperienceRecord>) => {
+    setEditingExp(expToEdit);
+    scrollToFormSection('experience-form-section');
+  };
+
   const handleSaveExp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingExp || !editingExp.role || !editingExp.company) return;
@@ -1512,15 +1532,16 @@ export default function AdminPage() {
             <div className="flex items-center justify-between border-4 border-black bg-brut-yellow p-4 shadow-brut-sm">
               <h3 className="font-display text-lg text-black">SKILLS MANAGEMENT (SUPABASE)</h3>
               <button
-                onClick={() =>
+                onClick={() => {
                   setEditingSkill({
                     name: '',
                     icon_name: 'FaCode',
                     color: '#61DAFB',
                     category: 'Frontend Engine',
                     sort_order: skills.length + 1,
-                  })
-                }
+                  });
+                  scrollToFormSection('skill-form-section');
+                }}
                 className="brut-btn bg-brut-cyan text-xs"
               >
                 <FaPlus /> Add New Skill
@@ -1529,7 +1550,7 @@ export default function AdminPage() {
 
             {/* Modal / Form Edit Skill */}
             {editingSkill && (
-              <form onSubmit={handleSaveSkill} className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4">
+              <form id="skill-form-section" onSubmit={handleSaveSkill} className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4">
                 <h4 className="font-display text-md text-black border-b-2 border-black pb-2">
                   {editingSkill.id ? 'Edit Skill' : 'Tambah Skill Baru'}
                 </h4>
@@ -1666,7 +1687,7 @@ export default function AdminPage() {
                             </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => setEditingSkill(skill)}
+                                onClick={() => handleStartEditSkill(skill)}
                                 className="p-2 border-2 border-black bg-brut-cyan text-xs"
                                 title="Edit Skill"
                               >
@@ -2129,7 +2150,7 @@ export default function AdminPage() {
             <div className="flex items-center justify-between border-4 border-black bg-brut-pink p-4 shadow-brut-sm">
               <h3 className="font-display text-lg text-black">CERTIFICATIONS MANAGEMENT (SUPABASE)</h3>
               <button
-                onClick={() =>
+                onClick={() => {
                   setEditingCert({
                     title: '',
                     issuer: '',
@@ -2138,8 +2159,10 @@ export default function AdminPage() {
                     link: '',
                     tags: [],
                     bg: 'bg-brut-yellow',
-                  })
-                }
+                    sort_order: certifications.length + 1,
+                  });
+                  scrollToFormSection('cert-form-section');
+                }}
                 className="brut-btn bg-brut-lime text-xs"
               >
                 <FaPlus /> Add New Certificate
@@ -2149,6 +2172,7 @@ export default function AdminPage() {
             {/* Form Edit Cert */}
             {editingCert && (
               <form
+                id="cert-form-section"
                 onSubmit={handleSaveCert}
                 className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
               >
@@ -2259,7 +2283,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex gap-3 pt-3 border-t-2 border-black">
                     <button
-                      onClick={() => setEditingCert(cert)}
+                      onClick={() => handleStartEditCert(cert)}
                       className="flex-1 brut-btn bg-brut-cyan text-xs"
                     >
                       <FaEdit /> Edit
@@ -2288,7 +2312,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <button
-                onClick={() =>
+                onClick={() => {
                   setEditingExp({
                     role: '',
                     company: '',
@@ -2299,8 +2323,9 @@ export default function AdminPage() {
                     description: '',
                     tags: [],
                     sort_order: experiences.length + 1,
-                  })
-                }
+                  });
+                  scrollToFormSection('experience-form-section');
+                }}
                 className="brut-btn bg-brut-yellow text-xs"
               >
                 <FaPlus /> Add New Experience
@@ -2310,6 +2335,7 @@ export default function AdminPage() {
             {/* Modal / Form Edit Experience */}
             {editingExp && (
               <form
+                id="experience-form-section"
                 onSubmit={handleSaveExp}
                 className="border-4 border-black bg-brut-paper p-6 shadow-brut-lg space-y-4"
               >
@@ -2490,7 +2516,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button
-                          onClick={() => setEditingExp(exp)}
+                          onClick={() => handleStartEditExp(exp)}
                           className="p-2 border-2 border-black bg-brut-yellow text-xs"
                           title="Edit Experience"
                         >
