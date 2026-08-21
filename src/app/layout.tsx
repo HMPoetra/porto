@@ -84,15 +84,15 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.png?v=2", sizes: "512x512", type: "image/png" },
-      { url: "/favicon.ico?v=2" },
+      { url: "/icon.png?v=3", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico?v=3" },
     ],
-    shortcut: "/favicon.ico?v=2",
+    shortcut: "/favicon.ico?v=3",
     apple: [
-      { url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" },
     ],
   },
-  manifest: "/manifest.json?v=2",
+  manifest: "/manifest.json?v=3",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
